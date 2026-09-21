@@ -1,9 +1,9 @@
 {% extends 'facturacion/base.html' %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <h2 class="mb-0">Ventas / Informes</h2>
-    <div class="d-flex gap-2 no-print">
+    <div class="d-flex gap-2 flex-wrap no-print">
         <a href="{% url 'crear_venta' %}" class="btn btn-primary fw-bold">
             <i class="bi bi-cart-plus"></i> Nueva Venta
         </a>
@@ -16,7 +16,7 @@
     </div>
 </div>
 
-<div class="btn-group mb-3 no-print" role="group">
+<div class="btn-group mb-3 flex-wrap no-print" role="group">
     <a href="?fecha_desde={{ hoy }}&fecha_hasta={{ hoy }}" class="btn btn-outline-secondary btn-sm">Hoy</a>
     <a href="?fecha_desde={{ primer_dia_mes }}&fecha_hasta={{ hoy }}" class="btn btn-outline-secondary btn-sm">Este mes</a>
     <a href="{% url 'informes' %}" class="btn btn-outline-secondary btn-sm">Todo el historial</a>
@@ -109,33 +109,35 @@
 </div>
 
 <div class="tabla-local">
-  <table class="table table-hover align-middle mb-0">
-    <thead>
-      <tr>
-        <th># Venta</th>
-        <th>Cliente</th>
-        <th>Local</th>
-        <th>Fecha</th>
-        <th>Forma de Pago</th>
-        <th>Total</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for venta in ventas %}
-      <tr>
-        <td>{{ venta.id }}</td>
-        <td>{{ venta.cliente.nombre }}</td>
-        <td>{{ venta.cliente.nombre_local|default:"-" }}</td>
-        <td>{{ venta.fecha|date:"d/m/Y H:i" }}</td>
-        <td>{{ venta.get_forma_pago_display }}</td>
-        <td class="fw-bold">Gs. {{ venta.total|floatformat:2 }}</td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="6" class="text-center py-4">No se encontraron ventas con los filtros aplicados.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th># Venta</th>
+                    <th>Cliente</th>
+                    <th>Local</th>
+                    <th>Fecha</th>
+                    <th>Forma de Pago</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for venta in ventas %}
+                <tr>
+                    <td>{{ venta.id }}</td>
+                    <td>{{ venta.cliente.nombre }}</td>
+                    <td>{{ venta.cliente.nombre_local|default:"-" }}</td>
+                    <td>{{ venta.fecha|date:"d/m/Y H:i" }}</td>
+                    <td>{{ venta.get_forma_pago_display }}</td>
+                    <td class="fw-bold">Gs. {{ venta.total|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-4">No se encontraron ventas con los filtros aplicados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

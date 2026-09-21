@@ -16,21 +16,49 @@
         <a class="navbar-brand" href="{% url 'dashboard' %}">
             <i class="bi bi-egg-fried"></i> Comedor A.R.M.
         </a>
-        <div class="navbar-nav me-auto">
-            <a class="nav-link" href="{% url 'dashboard' %}"><i class="bi bi-grid"></i> Inicio</a>
-            <a class="nav-link" href="{% url 'cliente_list' %}"><i class="bi bi-people"></i> Clientes</a>
-            <a class="nav-link" href="{% url 'producto_list' %}"><i class="bi bi-box-seam"></i> Productos</a>
-            <a class="nav-link" href="{% url 'crear_venta' %}"><i class="bi bi-cart-plus"></i> Nueva venta</a>
-            <a class="nav-link" href="{% url 'pedido_list' %}">
-                <i class="bi bi-egg-fried"></i> Pedidos
-                {% if pedidos_pendientes_nav %}<span class="badge bg-danger">{{ pedidos_pendientes_nav }}</span>{% endif %}
-            </a>
-            <a class="nav-link" href="{% url 'informes' %}"><i class="bi bi-graph-up"></i> Ventas / Informes</a>
+
+        <!-- Botón hamburguesa para mobile -->
+        <button class="navbar-toggler" type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#navbarContenido"
+                aria-controls="navbarContenido"
+                aria-expanded="false"
+                aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- Contenido colapsable -->
+        <div class="collapse navbar-collapse" id="navbarContenido">
+            <div class="navbar-nav me-auto">
+                <a class="nav-link" href="{% url 'dashboard' %}">
+                    <i class="bi bi-grid"></i> Inicio
+                </a>
+                <a class="nav-link" href="{% url 'cliente_list' %}">
+                    <i class="bi bi-people"></i> Clientes
+                </a>
+                <a class="nav-link" href="{% url 'producto_list' %}">
+                    <i class="bi bi-box-seam"></i> Productos
+                </a>
+                <a class="nav-link" href="{% url 'crear_venta' %}">
+                    <i class="bi bi-cart-plus"></i> Nueva venta
+                </a>
+                <a class="nav-link" href="{% url 'pedido_list' %}">
+                    <i class="bi bi-egg-fried"></i> Pedidos
+                    {% if pedidos_pendientes_nav %}
+                        <span class="badge bg-danger">{{ pedidos_pendientes_nav }}</span>
+                    {% endif %}
+                </a>
+                <a class="nav-link" href="{% url 'informes' %}">
+                    <i class="bi bi-graph-up"></i> Ventas / Informes
+                </a>
+            </div>
+            <form action="{% url 'logout' %}" method="POST" class="d-inline mt-2 mt-lg-0">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+                </button>
+            </form>
         </div>
-        <form action="{% url 'logout' %}" method="POST" class="d-inline">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Cerrar Sesión</button>
-        </form>
     </div>
 </nav>
 {% endif %}
