@@ -1,0 +1,230 @@
+/* =========================================================
+   Comedor A.R.M. - Estilos globales
+   Paleta oscura + acento amarillo
+   ========================================================= */
+
+:root {
+    /* Paleta corporativa "Comedor A.R.M." */
+    --color-fondo:          #121212;
+    --color-superficie:     #1E1E1E;
+    --color-superficie-alt: #262626;
+    --color-navbar:         #0A0A0A;
+    --color-texto:          #EAEAEA;
+    --color-texto-muted:    #9E9E9E;
+    --color-borde:          #333333;
+    --color-acento:         #FFC107;
+    --color-acento-texto:   #121212;
+    --color-peligro:        #D32F2F;
+    --color-exito:          #2E7D32;
+    --radio-card: 0.75rem;
+}
+
+body {
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+}
+
+a { color: var(--color-acento); }
+
+/* =========================================================
+   Navbar
+   ========================================================= */
+.navbar-local {
+    background-color: var(--color-navbar);
+    border-bottom: 3px solid var(--color-acento);
+}
+.navbar-local .navbar-brand {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--color-acento) !important;
+}
+.navbar-local .nav-link {
+    color: rgba(255, 255, 255, 0.82);
+    transition: color 0.15s ease;
+}
+.navbar-local .nav-link:hover {
+    color: var(--color-acento);
+}
+
+/* =========================================================
+   Botones (reskin de Bootstrap)
+   ========================================================= */
+.btn-primary, .btn-warning {
+    background-color: var(--color-acento);
+    border-color: var(--color-acento);
+    color: var(--color-acento-texto);
+    font-weight: 600;
+}
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active,
+.btn-warning:hover, .btn-warning:focus, .btn-warning:active {
+    background-color: #e0a800;
+    border-color: #e0a800;
+    color: var(--color-acento-texto);
+}
+.btn-danger {
+    background-color: var(--color-peligro);
+    border-color: var(--color-peligro);
+}
+.btn-success {
+    background-color: var(--color-exito);
+    border-color: var(--color-exito);
+}
+.btn-outline-success {
+    color: #6fcf73;
+    border-color: var(--color-exito);
+}
+.btn-outline-success:hover {
+    background-color: var(--color-exito);
+    color: #fff;
+}
+.btn-outline-secondary {
+    color: var(--color-texto);
+    border-color: var(--color-borde);
+}
+.btn-secondary {
+    background-color: #424242;
+    border-color: #424242;
+}
+
+/* =========================================================
+   Tarjetas, tablas, modales, formularios
+   ========================================================= */
+.card, .modal-content {
+    background-color: var(--color-superficie);
+    color: var(--color-texto);
+    border: 1px solid var(--color-borde);
+}
+.form-control, .form-select {
+    background-color: var(--color-superficie-alt);
+    border-color: var(--color-borde);
+    color: var(--color-texto);
+}
+.form-control:focus, .form-select:focus {
+    background-color: var(--color-superficie-alt);
+    color: var(--color-texto);
+    border-color: var(--color-acento);
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+}
+.form-control::placeholder { color: var(--color-texto-muted); }
+label, .form-label { color: var(--color-texto); }
+.list-group-item {
+    background-color: var(--color-superficie-alt);
+    color: var(--color-texto);
+    border-color: var(--color-borde);
+}
+.list-group-item-action:hover {
+    background-color: #333;
+    color: var(--color-acento);
+}
+
+/* =========================================================
+   Tarjetas KPI
+   ========================================================= */
+.card-kpi {
+    border: none;
+    border-radius: var(--radio-card);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+.card-kpi .kpi-icono {
+    width: 44px;
+    height: 44px;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    background-color: rgba(255, 193, 7, 0.15);
+    color: var(--color-acento);
+}
+.card-kpi .kpi-valor {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-texto);
+}
+.card-kpi .kpi-label {
+    font-size: 0.82rem;
+    color: var(--color-texto-muted);
+}
+
+/* =========================================================
+   Tablas
+   ========================================================= */
+.tabla-local {
+    background: var(--color-superficie);
+    border-radius: var(--radio-card);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+}
+.tabla-local table {
+    margin-bottom: 0;
+    color: var(--color-texto);
+}
+.tabla-local thead {
+    background-color: var(--color-navbar);
+}
+.tabla-local thead th {
+    color: var(--color-acento);
+    font-weight: 600;
+    border-bottom: none;
+}
+.tabla-local tbody tr {
+    transition: background-color 0.12s ease;
+    border-color: var(--color-borde);
+}
+.tabla-local tbody tr:hover {
+    background-color: rgba(255, 193, 7, 0.08);
+}
+
+/* =========================================================
+   Badges y alertas
+   ========================================================= */
+.badge-deudor { background-color: var(--color-peligro); }
+.badge-al-dia { background-color: var(--color-exito); }
+
+.alert-danger {
+    background-color: rgba(211, 47, 47, 0.18);
+    border-color: var(--color-peligro);
+    color: #ffb3ab;
+}
+.alert-success {
+    background-color: rgba(46, 125, 50, 0.18);
+    border-color: var(--color-exito);
+    color: #a5d6a7;
+}
+.alert-warning {
+    background-color: rgba(255, 193, 7, 0.15);
+    border-color: var(--color-acento);
+    color: #ffe28a;
+}
+
+/* =========================================================
+   Tarjetas del dashboard
+   ========================================================= */
+.card-dashboard {
+    border: none;
+    border-radius: var(--radio-card);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+    background-color: var(--color-superficie);
+    color: var(--color-texto);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card-dashboard i { color: var(--color-acento); }
+.card-dashboard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+}
+
+/* =========================================================
+   Impresión (blanco y negro)
+   ========================================================= */
+@media print {
+    .no-print, .navbar-local {
+        display: none !important;
+    }
+    body, .tabla-local, .card-kpi, table, th, td, .card {
+        background: #fff !important;
+        color: #000 !important;
+        box-shadow: none !important;
+        border-color: #ddd !important;
+    }
+}
