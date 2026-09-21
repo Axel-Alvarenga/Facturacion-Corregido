@@ -1,0 +1,132 @@
+{% extends 'facturacion/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Clientes</h2>
+    <a href="{% url 'cliente_create' %}" class="btn btn-primary fw-bold">
+        <i class="bi bi-person-plus"></i> Nuevo Cliente
+    </a>
+</div>
+
+{% if error_eliminar %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ error_eliminar }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icono"><i class="bi bi-people"></i></div>
+                <div>
+                    <div class="kpi-valor">{{ total_clientes }}</div>
+                    <div class="kpi-label">Clientes registrados</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icono"><i class="bi bi-exclamation-circle"></i></div>
+                <div>
+                    <div class="kpi-valor">{{ clientes_con_deuda }}</div>
+                    <div class="kpi-label">Clientes con deuda</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icono"><i class="bi bi-cash-stack"></i></div>
+                <div>
+                    <div class="kpi-valor">Gs. {{ monto_total_deuda|floatformat:0 }}</div>
+                    <div class="kpi-label">Total adeudado</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tabla-local">
+    <table class="table table-hover align-middle mb-0">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Local</th>
+                <th>Teléfono</th>
+                <th>Estado de Deuda</th>
+                <th>Saldo Deudor</th>
+                <th class="text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in clientes %}
+                <tr>
+                    <td>{{ c.nombre }}</td>
+                    <td>{{ c.nombre_local|default:"-" }}</td>
+                    <td>{{ c.telefono|default:"-" }}</td>
+                    <td>
+                        {% if c.deuda > 0 %}
+                            <span class="badge badge-deudor">DEUDOR</span>
+                        {% else %}
+                            <span class="badge badge-al-dia">SIN DEUDA</span>
+                        {% endif %}
+                    </td>
+                    <td class="fw-bold">Gs. {{ c.deuda|floatformat:2 }}</td>
+                    <td class="text-center">
+                        <a href="{% url 'pagar_deuda' c.id %}" class="btn btn-info btn-sm fw-bold text-white" title="Cobrar / Abonar">
+                            <i class="bi bi-cash-coin"></i>
+                        </a>
+                        <a href="{% url 'cliente_update' c.id %}" class="btn btn-warning btn-sm fw-bold" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button type="button" class="btn btn-danger btn-sm fw-bold" title="Eliminar"
+                                data-bs-toggle="modal" data-bs-target="#modalEliminarCliente"
+                                data-nombre="{{ c.nombre }}" data-url="{% url 'cliente_delete' c.id %}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-4">No hay clientes registrados.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal de confirmación (uno solo, reusado para cualquier fila) -->
+<div class="modal fade" id="modalEliminarCliente" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger"></i> Eliminar cliente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        ¿Seguro que querés eliminar a "<span id="modalEliminarClienteNombre"></span>"?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form id="formEliminarCliente" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Eliminar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('modalEliminarCliente').addEventListener('show.bs.modal', function (event) {
+    const boton = event.relatedTarget;
+    document.getElementById('modalEliminarClienteNombre').textContent = boton.getAttribute('data-nombre');
+    document.getElementById('formEliminarCliente').action = boton.getAttribute('data-url');
+});
+</script>
+{% endblock %}

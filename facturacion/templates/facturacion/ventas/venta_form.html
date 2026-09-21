@@ -1,0 +1,85 @@
+{% extends 'facturacion/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">Nueva Venta</h2>
+
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <form id="form-venta" method="POST">
+    {% csrf_token %}
+
+    <!-- Campo oculto para enviar el ID del cliente seleccionado -->
+    <input type="hidden" id="cliente-id" name="cliente">
+
+    <!-- Bloque superior -->
+    <div class="card shadow-sm border-0 p-3 mb-4">
+    <div class="row g-3">
+      <!-- 1. Buscador AJAX de Producto -->
+      <div class="col-md-4 position-relative">
+        <label class="form-label fw-bold"><i class="bi bi-search"></i> Producto</label>
+        <input type="text" id="buscar-prod" class="form-control" placeholder="Buscar producto..." autocomplete="off">
+        <div id="resultados-prod" class="list-group position-absolute w-100 shadow mt-1" style="z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+      </div>
+
+      <!-- 2. Buscador en tiempo real de Cliente -->
+      <div class="col-md-4 position-relative">
+        <label class="form-label fw-bold"><i class="bi bi-person"></i> Cliente</label>
+        <input type="text" id="buscar-cliente" class="form-control" placeholder="Escribe el nombre del cliente..." autocomplete="off">
+        <select id="select-cliente-oculto" style="display:none;">
+          {% for cliente in clientes %}
+            <option value="{{ cliente.id }}">{{ cliente.nombre }}{% if cliente.nombre_local %} - {{ cliente.nombre_local }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        <div id="resultados-cliente" class="list-group position-absolute w-100 shadow mt-1" style="z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+      </div>
+
+      <!-- 3. Forma de pago -->
+      <div class="col-md-4">
+        <label class="form-label fw-bold"><i class="bi bi-credit-card"></i> Forma de pago</label>
+        <select id="select-forma-pago" name="forma_pago" class="form-select">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="CREDITO">Crédito</option>
+          <option value="TRANSFERENCIA">Transferencia</option>
+        </select>
+      </div>
+    </div>
+    </div>
+
+    <!-- Tabla principal -->
+    <div class="tabla-local mb-4">
+      <table class="table table-hover align-middle mb-0" id="tabla-venta">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Precio</th>
+            <th style="width: 220px;">Cantidad</th>
+            <th class="text-center" style="width: 150px;">Acción</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpo-tabla">
+          <!-- Filas agregadas por JS -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Bloque de Total y Botón de Vender -->
+    <div class="row justify-content-end mt-4">
+      <div class="col-md-4 text-center">
+        <div class="card card-kpi p-3 mb-3">
+          <h3 class="m-0 fw-bold">TOTAL: Gs. <span id="total-monto">0</span></h3>
+          <input type="hidden" id="total-input" name="total" value="0">
+        </div>
+        <button type="submit" id="btn-vender" class="btn btn-success btn-lg w-100 fw-bold">
+          <i class="bi bi-check-circle"></i> VENDER
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% load static %}
+<script src="{% static 'facturacion/js/venta_form.js' %}"></script>
+{% endblock %}

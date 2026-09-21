@@ -1,0 +1,118 @@
+{% extends 'facturacion/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4"><i class="bi bi-egg-fried"></i> Nuevo Pedido a Cocina</h2>
+
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <form id="form-pedido" method="POST">
+    {% csrf_token %}
+
+    <div class="card shadow-sm border-0 p-3 mb-4">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-bold"><i class="bi bi-signpost"></i> Mesa / Cliente / Referencia</label>
+          <input type="text" name="mesa_o_cliente" class="form-control" placeholder="Ej: Mesa 3, o nombre del cliente" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold"><i class="bi bi-chat-left-text"></i> Nota general (opcional)</label>
+          <input type="text" name="nota" class="form-control" placeholder="Ej: para llevar">
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 p-3 mb-4 position-relative">
+      <label class="form-label fw-bold"><i class="bi bi-search"></i> Agregar producto</label>
+      <input type="text" id="buscar-prod" class="form-control" placeholder="Buscar o hacer clic para ver sugerencias..." autocomplete="off">
+      <div id="resultados-prod" class="list-group position-absolute shadow mt-1" style="z-index: 1000; max-height: 240px; overflow-y: auto; top: 100%; left: 1rem; right: 1rem;"></div>
+    </div>
+
+    <div class="tabla-local mb-4">
+      <table class="table table-hover align-middle mb-0" id="tabla-pedido">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th style="width: 160px;">Cantidad</th>
+            <th>Nota del ítem</th>
+            <th class="text-center" style="width: 100px;">Acción</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpo-tabla"></tbody>
+      </table>
+    </div>
+
+    <button type="submit" class="btn btn-success btn-lg w-100 fw-bold">
+      <i class="bi bi-check-circle"></i> Enviar pedido a cocina
+    </button>
+  </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const inputProd = document.getElementById('buscar-prod');
+    const resProd = document.getElementById('resultados-prod');
+    const cuerpoTabla = document.getElementById('cuerpo-tabla');
+    const formPedido = document.getElementById('form-pedido');
+
+    function mostrarSugerencias(query) {
+        fetch('/api/buscar-productos/?q=' + encodeURIComponent(query))
+            .then(res => res.json())
+            .then(data => {
+                resProd.innerHTML = '';
+                data.results.forEach(p => {
+                    const item = document.createElement('a');
+                    item.className = 'list-group-item list-group-item-action';
+                    item.style.cursor = 'pointer';
+                    item.textContent = p.nombre;
+                    item.onclick = function (e) {
+                        e.preventDefault();
+                        agregarFila(p);
+                        resProd.innerHTML = '';
+                        inputProd.value = '';
+                    };
+                    resProd.appendChild(item);
+                });
+            });
+    }
+
+    // Al hacer foco (sin escribir nada) ya muestra sugerencias, no hace
+    // falta empezar a tipear para ver opciones.
+    inputProd.addEventListener('focus', function () {
+        if (this.value.trim().length === 0) mostrarSugerencias('');
+    });
+    inputProd.addEventListener('input', function () {
+        mostrarSugerencias(this.value.trim());
+    });
+    document.addEventListener('click', function (e) {
+        if (!resProd.contains(e.target) && e.target !== inputProd) resProd.innerHTML = '';
+    });
+
+    function agregarFila(producto) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                ${producto.nombre}
+                <input type="hidden" name="producto_id[]" value="${producto.id}">
+            </td>
+            <td><input type="number" name="cantidad[]" class="form-control" value="1" min="1"></td>
+            <td><input type="text" name="nota_item[]" class="form-control" placeholder="Ej: sin cebolla"></td>
+            <td class="text-center">
+                <button type="button" class="btn btn-danger btn-sm btn-eliminar"><i class="bi bi-trash"></i></button>
+            </td>
+        `;
+        tr.querySelector('.btn-eliminar').addEventListener('click', function () { tr.remove(); });
+        cuerpoTabla.appendChild(tr);
+    }
+
+    formPedido.addEventListener('submit', function (e) {
+        if (cuerpoTabla.children.length === 0) {
+            e.preventDefault();
+            alert('Agregá al menos un producto al pedido.');
+        }
+    });
+});
+</script>
+{% endblock %}

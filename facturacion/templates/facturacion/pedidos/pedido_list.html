@@ -1,0 +1,113 @@
+{% extends 'facturacion/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0"><i class="bi bi-egg-fried"></i> Cocina A.R.M.</h2>
+    <a href="{% url 'pedido_create' %}" class="btn btn-primary btn-lg fw-bold">
+        <i class="bi bi-plus-circle"></i> Nuevo pedido
+    </a>
+</div>
+
+<p class="text-muted small no-print mb-4">
+    <i class="bi bi-arrow-repeat"></i> Esta pantalla se actualiza sola cada 20 segundos.
+</p>
+
+<div class="row g-4">
+    <!-- Columna 1: PENDIENTES -->
+    <div class="col-md-4">
+        <div class="p-3 mb-3 rounded text-center" style="background-color: var(--color-peligro);">
+            <h3 class="mb-0 fw-bold text-white"><i class="bi bi-hourglass-split"></i> PENDIENTES</h3>
+        </div>
+        {% for pedido in pedidos %}
+            {% if pedido.estado == 'PENDIENTE' %}
+            <div class="card p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="fs-4 fw-bold">{{ pedido.mesa_o_cliente }}</span>
+                    <span class="text-muted fs-6">{{ pedido.fecha|date:"H:i" }}</span>
+                </div>
+                <ul class="mb-3 ps-3 fs-5">
+                    {% for item in pedido.items.all %}
+                        <li>{{ item.cantidad }} × {{ item.producto.nombre }}{% if item.nota_item %} <span class="text-muted">({{ item.nota_item }})</span>{% endif %}</li>
+                    {% endfor %}
+                </ul>
+                {% if pedido.nota %}<p class="text-muted mb-3"><i class="bi bi-chat-left-text"></i> {{ pedido.nota }}</p>{% endif %}
+                <form method="post" action="{% url 'pedido_actualizar_estado' pedido.id 'EN_PREPARACION' %}">
+                    {% csrf_token %}
+                    <button class="btn btn-warning btn-lg w-100 fw-bold py-3">
+                        <i class="bi bi-arrow-right-circle"></i> PASAR A PREPARACIÓN
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        {% empty %}
+            <p class="text-muted">Sin pedidos.</p>
+        {% endfor %}
+    </div>
+
+    <!-- Columna 2: EN PREPARACION -->
+    <div class="col-md-4">
+        <div class="p-3 mb-3 rounded text-center" style="background-color: var(--color-acento);">
+            <h3 class="mb-0 fw-bold" style="color: var(--color-acento-texto);"><i class="bi bi-fire"></i> EN PREPARACIÓN</h3>
+        </div>
+        {% for pedido in pedidos %}
+            {% if pedido.estado == 'EN_PREPARACION' %}
+            <div class="card p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="fs-4 fw-bold">{{ pedido.mesa_o_cliente }}</span>
+                    <span class="text-muted fs-6">{{ pedido.fecha|date:"H:i" }}</span>
+                </div>
+                <ul class="mb-3 ps-3 fs-5">
+                    {% for item in pedido.items.all %}
+                        <li>{{ item.cantidad }} × {{ item.producto.nombre }}{% if item.nota_item %} <span class="text-muted">({{ item.nota_item }})</span>{% endif %}</li>
+                    {% endfor %}
+                </ul>
+                {% if pedido.nota %}<p class="text-muted mb-3"><i class="bi bi-chat-left-text"></i> {{ pedido.nota }}</p>{% endif %}
+                <form method="post" action="{% url 'pedido_actualizar_estado' pedido.id 'LISTO' %}">
+                    {% csrf_token %}
+                    <button class="btn btn-success btn-lg w-100 fw-bold py-3">
+                        <i class="bi bi-check-circle"></i> ¡LISTO PARA SERVIR!
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        {% empty %}
+            <p class="text-muted">Sin pedidos.</p>
+        {% endfor %}
+    </div>
+
+    <!-- Columna 3: LISTOS PARA RETIRAR -->
+    <div class="col-md-4">
+        <div class="p-3 mb-3 rounded text-center" style="background-color: var(--color-exito);">
+            <h3 class="mb-0 fw-bold text-white"><i class="bi bi-bell"></i> LISTOS PARA RETIRAR</h3>
+        </div>
+        {% for pedido in pedidos %}
+            {% if pedido.estado == 'LISTO' %}
+            <div class="card p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="fs-4 fw-bold">{{ pedido.mesa_o_cliente }}</span>
+                    <span class="text-muted fs-6">{{ pedido.fecha|date:"H:i" }}</span>
+                </div>
+                <ul class="mb-3 ps-3 fs-5">
+                    {% for item in pedido.items.all %}
+                        <li>{{ item.cantidad }} × {{ item.producto.nombre }}{% if item.nota_item %} <span class="text-muted">({{ item.nota_item }})</span>{% endif %}</li>
+                    {% endfor %}
+                </ul>
+                {% if pedido.nota %}<p class="text-muted mb-3"><i class="bi bi-chat-left-text"></i> {{ pedido.nota }}</p>{% endif %}
+                <form method="post" action="{% url 'pedido_actualizar_estado' pedido.id 'ENTREGADO' %}">
+                    {% csrf_token %}
+                    <button class="btn btn-secondary btn-lg w-100 fw-bold py-3">
+                        <i class="bi bi-box-arrow-up"></i> MARCAR RETIRADO
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        {% empty %}
+            <p class="text-muted">Sin pedidos.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    setTimeout(function () { window.location.reload(); }, 20000);
+</script>
+{% endblock %}

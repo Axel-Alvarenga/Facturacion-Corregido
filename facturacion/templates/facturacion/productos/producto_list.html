@@ -1,0 +1,80 @@
+{% extends 'facturacion/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Productos</h2>
+    <a href="{% url 'producto_create' %}" class="btn btn-primary fw-bold">
+        <i class="bi bi-plus-circle"></i> Nuevo Producto
+    </a>
+</div>
+
+{% if error_eliminar %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ error_eliminar }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+{% endif %}
+
+<div class="tabla-local">
+    <table class="table table-hover align-middle mb-0">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Precio</th>
+                <th class="text-center" style="width: 200px;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in productos %}
+                <tr>
+                    <td>{{ p.nombre }}</td>
+                    <td>Gs. {{ p.precio|floatformat:2 }}</td>
+                    <td class="text-center">
+                        <a href="{% url 'producto_update' p.pk %}" class="btn btn-warning btn-sm fw-bold" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button type="button" class="btn btn-danger btn-sm fw-bold" title="Eliminar"
+                                data-bs-toggle="modal" data-bs-target="#modalEliminarProducto"
+                                data-nombre="{{ p.nombre }}" data-url="{% url 'producto_delete' p.pk %}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center py-4">No hay productos cargados.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="modalEliminarProducto" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger"></i> Eliminar producto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        ¿Seguro que querés eliminar "<span id="modalEliminarProductoNombre"></span>"?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form id="formEliminarProducto" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Eliminar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('modalEliminarProducto').addEventListener('show.bs.modal', function (event) {
+    const boton = event.relatedTarget;
+    document.getElementById('modalEliminarProductoNombre').textContent = boton.getAttribute('data-nombre');
+    document.getElementById('formEliminarProducto').action = boton.getAttribute('data-url');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,3 @@
+"""
+Funciones helper reutilizables.
+"""

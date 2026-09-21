@@ -1,0 +1,51 @@
+{% extends 'facturacion/base.html' %}
+
+{% block content %}
+<h2 class="mb-4">¿Qué necesitás hacer?</h2>
+
+<div class="row g-4">
+    <div class="col-md-4 col-sm-6">
+        <a href="{% url 'crear_venta' %}" class="text-decoration-none">
+            <div class="card card-dashboard p-4 text-center h-100">
+                <i class="bi bi-cart-plus display-4 mb-3"></i>
+                <h5 class="mb-0">Nueva Venta</h5>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-sm-6">
+        <a href="{% url 'pedido_list' %}" class="text-decoration-none">
+            <div class="card card-dashboard p-4 text-center h-100 position-relative">
+                {% if pedidos_pendientes %}
+                    <span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ pedidos_pendientes }}</span>
+                {% endif %}
+                <i class="bi bi-egg-fried display-4 mb-3"></i>
+                <h5 class="mb-0">Pedidos de Cocina</h5>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-sm-6">
+        <a href="{% url 'producto_list' %}" class="text-decoration-none">
+            <div class="card card-dashboard p-4 text-center h-100">
+                <i class="bi bi-box-seam display-4 mb-3"></i>
+                <h5 class="mb-0">Productos</h5>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-sm-6">
+        <a href="{% url 'cliente_list' %}" class="text-decoration-none">
+            <div class="card card-dashboard p-4 text-center h-100">
+                <i class="bi bi-people display-4 mb-3"></i>
+                <h5 class="mb-0">Clientes</h5>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-sm-6">
+        <a href="{% url 'informes' %}" class="text-decoration-none">
+            <div class="card card-dashboard p-4 text-center h-100">
+                <i class="bi bi-graph-up display-4 mb-3"></i>
+                <h5 class="mb-0">Informes de Ventas</h5>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}
