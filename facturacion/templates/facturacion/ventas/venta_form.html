@@ -11,23 +11,27 @@
   <form id="form-venta" method="POST">
     {% csrf_token %}
 
-    <!-- Campo oculto para enviar el ID del cliente seleccionado -->
     <input type="hidden" id="cliente-id" name="cliente">
 
-    <!-- Bloque superior -->
     <div class="card shadow-sm border-0 p-3 mb-4">
     <div class="row g-3">
-      <!-- 1. Buscador AJAX de Producto -->
       <div class="col-md-4 position-relative">
         <label class="form-label fw-bold"><i class="bi bi-search"></i> Producto</label>
-        <input type="text" id="buscar-prod" class="form-control" placeholder="Buscar producto..." autocomplete="off">
+        <input type="text" id="buscar-prod" class="form-control"
+               data-autocomplete="productos"
+               data-resultados="resultados-prod"
+               placeholder="Buscar producto..." autocomplete="off">
         <div id="resultados-prod" class="list-group position-absolute w-100 shadow mt-1" style="z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
       </div>
 
-      <!-- 2. Buscador en tiempo real de Cliente -->
       <div class="col-md-4 position-relative">
-        <label class="form-label fw-bold"><i class="bi bi-person"></i> Cliente</label>
-        <input type="text" id="buscar-cliente" class="form-control" placeholder="Escribe el nombre del cliente..." autocomplete="off">
+        <label class="form-label fw-bold">
+          <i class="bi bi-person"></i> Cliente <span class="text-muted">(opcional)</span>
+        </label>
+        <input type="text" id="buscar-cliente" class="form-control"
+               data-autocomplete="clientes"
+               data-resultados="resultados-cliente"
+               placeholder="Sin cliente → Consumidor Final" autocomplete="off">
         <select id="select-cliente-oculto" style="display:none;">
           {% for cliente in clientes %}
             <option value="{{ cliente.id }}">{{ cliente.nombre }}{% if cliente.nombre_local %} - {{ cliente.nombre_local }}{% endif %}</option>
@@ -36,7 +40,6 @@
         <div id="resultados-cliente" class="list-group position-absolute w-100 shadow mt-1" style="z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
       </div>
 
-      <!-- 3. Forma de pago -->
       <div class="col-md-4">
         <label class="form-label fw-bold"><i class="bi bi-credit-card"></i> Forma de pago</label>
         <select id="select-forma-pago" name="forma_pago" class="form-select">
@@ -48,24 +51,29 @@
     </div>
     </div>
 
-    <!-- Tabla principal -->
-    <div class="tabla-local mb-4">
-      <table class="table table-hover align-middle mb-0" id="tabla-venta">
-        <thead>
-          <tr>
-            <th>Producto</th>
-            <th>Precio</th>
-            <th style="width: 220px;">Cantidad</th>
-            <th class="text-center" style="width: 150px;">Acción</th>
-          </tr>
-        </thead>
-        <tbody id="cuerpo-tabla">
-          <!-- Filas agregadas por JS -->
-        </tbody>
-      </table>
+    <!-- Botón para agregar ítem manual -->
+    <div class="mb-3">
+      <button type="button" class="btn btn-outline-warning fw-bold" id="btnAgregarManual">
+        <i class="bi bi-plus-circle"></i> Agregar ítem manual (recargo, propina, etc.)
+      </button>
     </div>
 
-    <!-- Bloque de Total y Botón de Vender -->
+    <div class="tabla-local mb-4">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="tabla-venta">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Precio</th>
+              <th style="width: 220px;">Cantidad</th>
+              <th class="text-center" style="width: 150px;">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-tabla"></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="row justify-content-end mt-4">
       <div class="col-md-4 text-center">
         <div class="card card-kpi p-3 mb-3">
@@ -80,6 +88,97 @@
   </form>
 </div>
 
+<!-- ============================================================
+     MODAL: AGREGAR ÍTEM MANUAL
+     ============================================================ -->
+<div class="modal fade" id="modalItemManual" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content confirmar-venta-modal">
+      <div class="modal-header border-0">
+        <h4 class="modal-title">
+          <i class="bi bi-pencil-square text-warning"></i> Ítem manual
+        </h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="manual-descripcion" class="form-label fw-bold">Descripción</label>
+          <input type="text" id="manual-descripcion" class="form-control"
+                 placeholder="Ej: Recargo de pan, Plato roto, Propina...">
+        </div>
+        <div class="mb-3">
+          <label for="manual-precio" class="form-label fw-bold">Precio (Gs.)</label>
+          <input type="number" id="manual-precio" class="form-control"
+                 placeholder="0" min="0" step="100">
+        </div>
+      </div>
+      <div class="modal-footer border-0 d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> Cancelar
+        </button>
+        <button type="button" class="btn btn-warning fw-bold" id="btnGuardarManual">
+          <i class="bi bi-plus-circle"></i> Agregar a la venta
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: CONFIRMAR VENTA
+     ============================================================ -->
+<div class="modal fade" id="modalConfirmarVenta" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content confirmar-venta-modal">
+      <div class="modal-header border-0">
+        <h4 class="modal-title">
+          <i class="bi bi-question-circle text-warning"></i> Confirmar venta
+        </h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2 fs-5">¿Estás seguro de realizar esta venta?</p>
+        <ul class="list-unstyled mb-0">
+          <li class="mb-1">
+            <i class="bi bi-cart-check"></i>
+            <strong>Productos:</strong>
+            <span id="confirmar-cantidad">0</span>
+          </li>
+          <li class="mb-1">
+            <i class="bi bi-person"></i>
+            <strong>Cliente:</strong>
+            <span id="confirmar-cliente">Consumidor Final</span>
+          </li>
+          <li>
+            <i class="bi bi-cash-stack"></i>
+            <strong>Total:</strong>
+            <span id="confirmar-total" class="text-success fw-bold">Gs. 0</span>
+          </li>
+        </ul>
+      </div>
+      <div class="modal-footer border-0 d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> Cancelar
+        </button>
+        <button type="button" class="btn btn-success fw-bold" id="btnConfirmarVenta">
+          <i class="bi bi-check-circle"></i> Sí, vender
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% load static %}
 <script src="{% static 'facturacion/js/venta_form.js' %}"></script>
+<script>
+// Refuerzo del foco inicial al buscador de productos
+document.addEventListener('DOMContentLoaded', function() {
+    [100, 300, 700].forEach(function (ms) {
+        setTimeout(function () {
+            const input = document.getElementById('buscar-prod');
+            if (input) input.focus();
+        }, ms);
+    });
+});
+</script>
 {% endblock %}

@@ -28,3 +28,8 @@ urlpatterns = [
     path('informes/', views.informes, name='informes'),
     path('informes/exportar-excel/', views.informes_export_excel, name='informes_export_excel'),
 ]
+from django.conf import settings
+from django.conf.urls.static import static
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

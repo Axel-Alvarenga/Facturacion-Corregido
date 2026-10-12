@@ -228,3 +228,115 @@ label, .form-label { color: var(--color-texto); }
         border-color: #ddd !important;
     }
 }
+/* =========================================================
+   Modal de confirmación de venta
+   ========================================================= */
+.confirmar-venta-modal {
+    border-radius: var(--radio-card);
+    border: 1px solid var(--color-acento);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+.confirmar-venta-modal .modal-header {
+    background-color: var(--color-superficie-alt);
+    border-radius: var(--radio-card) var(--radio-card) 0 0;
+    padding: 1rem 1.25rem;
+}
+.confirmar-venta-modal .modal-title {
+    color: var(--color-texto);
+    font-weight: 700;
+}
+.confirmar-venta-modal .modal-body {
+    padding: 1.5rem 1.25rem;
+}
+.confirmar-venta-modal .modal-body ul li {
+    font-size: 1.05rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px dashed var(--color-borde);
+}
+.confirmar-venta-modal .modal-body ul li:last-child {
+    border-bottom: none;
+}
+.confirmar-venta-modal .modal-body ul li i {
+    color: var(--color-acento);
+    width: 1.5rem;
+}
+.confirmar-venta-modal .modal-footer {
+    padding: 1rem 1.25rem 1.25rem;
+}
+.confirmar-venta-modal .btn-success {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+/* =========================================================
+   Filas de ítem manual en la tabla de venta
+   ========================================================= */
+.fila-manual {
+    background-color: rgba(255, 193, 7, 0.08);
+    border-left: 4px solid var(--color-acento);
+}
+.fila-manual:hover {
+    background-color: rgba(255, 193, 7, 0.15);
+}
+/* =========================================================
+   Modal CRUD (productos, clientes) + vista previa de foto
+   ========================================================= */
+.crud-modal {
+    border-radius: var(--radio-card);
+    border: 1px solid var(--color-borde);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+.crud-modal .modal-header {
+    background-color: var(--color-superficie-alt);
+    border-radius: var(--radio-card) var(--radio-card) 0 0;
+    padding: 1rem 1.25rem;
+}
+.crud-modal .modal-title {
+    color: var(--color-texto);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.crud-modal .modal-title i {
+    font-size: 1.4rem;
+}
+.crud-modal .modal-body {
+    padding: 1.5rem 1.25rem;
+}
+.crud-modal .modal-footer {
+    padding: 1rem 1.25rem 1.25rem;
+}
+.crud-modal .form-label {
+    color: var(--color-texto);
+}
+.crud-modal .invalid-feedback {
+    color: #ff8a80;
+    font-size: 0.85rem;
+}
+.crud-modal .form-control.is-invalid {
+    border-color: var(--color-peligro);
+    background-color: rgba(211, 47, 47, 0.05);
+}
+
+/* Vista previa de foto */
+.foto-preview-wrapper {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    background-color: var(--color-superficie-alt);
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-borde);
+}
+
+/* Placeholder "sin foto" en la tabla de productos */
+.producto-sin-foto {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-superficie-alt);
+    border-radius: 6px;
+    color: var(--color-texto-muted);
+    font-size: 1.25rem;
+}

@@ -1,9 +1,9 @@
 /* =========================================================
    Comedor A.R.M. - Formulario de nueva venta
-   - Buscador de productos con AJAX
-   - Buscador de cliente en vivo
-   - Cálculo del total en vivo (solo visual; el total real
-     lo recalcula el servidor)
+   - Buscador AJAX de productos
+   - Buscador de cliente (opcional)
+   - Ítems manuales (recargos, propinas, etc.)
+   - Confirmación visual antes de vender
    ========================================================= */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -16,7 +16,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const cuerpoTabla = document.getElementById('cuerpo-tabla');
     const formVenta = document.getElementById('form-venta');
 
-    // ------- Buscador de cliente en vivo -------
+    // Modal de confirmación
+    const modalEl = document.getElementById('modalConfirmarVenta');
+    const modalInstance = modalEl ? new bootstrap.Modal(modalEl) : null;
+    const btnConfirmar = document.getElementById('btnConfirmarVenta');
+
+    // Modal de ítem manual
+    const modalManualEl = document.getElementById('modalItemManual');
+    const modalManualInstance = modalManualEl ? new bootstrap.Modal(modalManualEl) : null;
+    const btnAbrirManual = document.getElementById('btnAgregarManual');
+    const btnGuardarManual = document.getElementById('btnGuardarManual');
+    const inputManualDesc = document.getElementById('manual-descripcion');
+    const inputManualPrecio = document.getElementById('manual-precio');
+
+    // ============================================
+    // Foco inicial
+    // ============================================
+    setTimeout(function () { inputProd.focus(); }, 300);
+
+    // ============================================
+    // Buscador de cliente en vivo (opcional)
+    // ============================================
     const clientesData = [];
     for (let option of selectOculto.options) {
         clientesData.push({ id: option.value, nombre: option.text });
@@ -45,7 +65,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ------- Buscador AJAX de productos -------
+    // ============================================
+    // Buscador AJAX de productos
+    // ============================================
     inputProd.addEventListener('input', function () {
         const query = this.value.trim();
         if (query.length < 2) {
@@ -66,12 +88,16 @@ document.addEventListener('DOMContentLoaded', function () {
                         agregarOActualizarFila(p);
                         resProd.innerHTML = '';
                         inputProd.value = '';
+                        inputProd.focus();
                     };
                     resProd.appendChild(item);
                 });
             });
     });
 
+    // ============================================
+    // Agregar producto del catálogo
+    // ============================================
     function agregarOActualizarFila(producto) {
         const filasExistentes = cuerpoTabla.querySelectorAll('tr');
         let encontrado = false;
@@ -88,6 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!encontrado) {
             const tr = document.createElement('tr');
             tr.dataset.precio = producto.precio;
+            tr.dataset.tipo = 'producto';
 
             tr.innerHTML = `
                 <td>
@@ -100,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <input type="number" name="cantidad[]" class="form-control cantidad-input" value="1" min="1">
                 </td>
                 <td class="text-center">
-                    <button type="button" class="btn btn-danger btn-sm btn-eliminar">Eliminar</button>
+                    <button type="button" class="btn btn-danger btn-sm btn-eliminar" tabindex="-1">Eliminar</button>
                 </td>
             `;
 
@@ -108,6 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
             tr.querySelector('.btn-eliminar').addEventListener('click', function () {
                 tr.remove();
                 recalcularTotal();
+                inputProd.focus();
             });
 
             cuerpoTabla.appendChild(tr);
@@ -116,28 +144,155 @@ document.addEventListener('DOMContentLoaded', function () {
         recalcularTotal();
     }
 
+    // ============================================
+    // Ítems manuales
+    // ============================================
+    if (btnAbrirManual) {
+        btnAbrirManual.addEventListener('click', function () {
+            inputManualDesc.value = '';
+            inputManualPrecio.value = '';
+            modalManualInstance.show();
+        });
+    }
+
+    if (modalManualEl) {
+        modalManualEl.addEventListener('shown.bs.modal', function () {
+            inputManualDesc.focus();
+        });
+
+        // Enter en descripción -> ir a precio; Enter en precio -> guardar
+        inputManualDesc.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                inputManualPrecio.focus();
+            }
+        });
+        inputManualPrecio.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                btnGuardarManual.click();
+            }
+        });
+    }
+
+    if (btnGuardarManual) {
+        btnGuardarManual.addEventListener('click', function () {
+            const desc = inputManualDesc.value.trim();
+            const precio = parseFloat(inputManualPrecio.value);
+
+            if (!desc) {
+                alert('Escribí una descripción (ej: "Recargo de pan").');
+                inputManualDesc.focus();
+                return;
+            }
+            if (isNaN(precio) || precio < 0) {
+                alert('Ingresá un precio válido (mayor o igual a 0).');
+                inputManualPrecio.focus();
+                return;
+            }
+
+            agregarFilaManual(desc, precio);
+            modalManualInstance.hide();
+            inputProd.focus();
+        });
+    }
+
+    function agregarFilaManual(descripcion, precio) {
+        const tr = document.createElement('tr');
+        tr.dataset.precio = precio;
+        tr.dataset.tipo = 'manual';
+        // Estilo diferente para distinguirlo
+        tr.classList.add('fila-manual');
+        // No se envía "cantidad", el precio ya es total del ítem
+        tr.innerHTML = `
+            <td>
+                <i class="bi bi-pencil-square text-warning"></i>
+                ${descripcion}
+                <input type="hidden" name="manual_descripcion[]" value="${descripcion}">
+            </td>
+            <td class="fw-bold">Gs. ${precio.toLocaleString('es-PY')}</td>
+            <td>
+                <span class="text-muted small">Ítem manual (sin cantidad)</span>
+                <input type="hidden" name="manual_precio[]" value="${precio}">
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-danger btn-sm btn-eliminar-manual" tabindex="-1">Eliminar</button>
+            </td>
+        `;
+
+        tr.querySelector('.btn-eliminar-manual').addEventListener('click', function () {
+            tr.remove();
+            recalcularTotal();
+            inputProd.focus();
+        });
+
+        cuerpoTabla.appendChild(tr);
+        recalcularTotal();
+    }
+
+    // ============================================
+    // Recálculo del total (incluye productos + manuales)
+    // ============================================
     function recalcularTotal() {
         let total = 0;
         document.querySelectorAll('#cuerpo-tabla tr').forEach(row => {
+            const tipo = row.dataset.tipo;
             const precio = parseFloat(row.dataset.precio) || 0;
-            const cant = parseInt(row.querySelector('.cantidad-input').value) || 0;
-            total += precio * cant;
+
+            if (tipo === 'manual') {
+                total += precio;
+            } else {
+                const cant = parseInt(row.querySelector('.cantidad-input').value) || 0;
+                total += precio * cant;
+            }
         });
         document.getElementById('total-monto').innerText = total.toLocaleString('es-PY');
         document.getElementById('total-input').value = total;
     }
 
-    // ------- Validación al enviar -------
+    // ============================================
+    // Submit: abre el modal de confirmación
+    // ============================================
     formVenta.addEventListener('submit', function (e) {
-        if (!clienteIdInput.value) {
-            e.preventDefault();
-            alert('Por favor selecciona un cliente de la lista sugerida.');
-            return;
-        }
+        e.preventDefault();
+
         if (cuerpoTabla.children.length === 0) {
-            e.preventDefault();
-            alert('Agrega al menos un producto para realizar la venta.');
+            alert('Agregá al menos un producto o un ítem manual.');
+            inputProd.focus();
             return;
         }
+
+        const cantidadItems = cuerpoTabla.children.length;
+        const totalTexto = document.getElementById('total-monto').innerText;
+        const clienteTexto = inputCliente.value.trim() || 'Consumidor Final';
+
+        document.getElementById('confirmar-cantidad').textContent = cantidadItems;
+        document.getElementById('confirmar-cliente').textContent = clienteTexto;
+        document.getElementById('confirmar-total').textContent = 'Gs. ' + totalTexto;
+
+        modalInstance.show();
     });
+
+    // ============================================
+    // Confirmar venta desde el modal
+    // ============================================
+    if (btnConfirmar) {
+        btnConfirmar.addEventListener('click', function () {
+            modalInstance.hide();
+            formVenta.submit();
+        });
+    }
+
+    if (modalEl) {
+        modalEl.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                btnConfirmar.click();
+            }
+        });
+
+        modalEl.addEventListener('shown.bs.modal', function () {
+            btnConfirmar.focus();
+        });
+    }
 });

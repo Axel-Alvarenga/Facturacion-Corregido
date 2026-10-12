@@ -3,9 +3,11 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <h2 class="mb-0">Productos</h2>
-    <a href="{% url 'producto_create' %}" class="btn btn-primary fw-bold">
+    <button type="button" class="btn btn-primary fw-bold"
+            data-bs-toggle="modal" data-bs-target="#modalProducto"
+            data-modo="crear">
         <i class="bi bi-plus-circle"></i> Nuevo Producto
-    </a>
+    </button>
 </div>
 
 {% if error_eliminar %}
@@ -20,6 +22,7 @@
         <table class="table table-hover align-middle mb-0">
             <thead>
                 <tr>
+                    <th style="width: 80px;">Foto</th>
                     <th>Nombre</th>
                     <th>Precio</th>
                     <th class="text-center" style="width: 200px;">Acciones</th>
@@ -28,22 +31,40 @@
             <tbody>
                 {% for p in productos %}
                     <tr>
+                        <td>
+                            {% if p.foto %}
+                                <img src="{{ p.foto.url }}" alt="{{ p.nombre }}"
+                                     style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;">
+                            {% else %}
+                                <div class="producto-sin-foto">
+                                    <i class="bi bi-image"></i>
+                                </div>
+                            {% endif %}
+                        </td>
                         <td>{{ p.nombre }}</td>
                         <td>Gs. {{ p.precio|floatformat:2 }}</td>
                         <td class="text-center text-nowrap">
-                            <a href="{% url 'producto_update' p.pk %}" class="btn btn-warning btn-sm fw-bold" title="Editar">
+                            <button type="button" class="btn btn-warning btn-sm fw-bold"
+                                    data-bs-toggle="modal" data-bs-target="#modalProducto"
+                                    data-modo="editar"
+                                    data-id="{{ p.pk }}"
+                                    data-nombre="{{ p.nombre }}"
+                                    data-precio="{{ p.precio|stringformat:'s' }}"
+                                    data-foto-url="{% if p.foto %}{{ p.foto.url }}{% endif %}"
+                                    title="Editar">
                                 <i class="bi bi-pencil"></i>
-                            </a>
+                            </button>
                             <button type="button" class="btn btn-danger btn-sm fw-bold" title="Eliminar"
                                     data-bs-toggle="modal" data-bs-target="#modalEliminarProducto"
-                                    data-nombre="{{ p.nombre }}" data-url="{% url 'producto_delete' p.pk %}">
+                                    data-nombre="{{ p.nombre }}"
+                                    data-url="{% url 'producto_delete' p.pk %}">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="3" class="text-center py-4">No hay productos cargados.</td>
+                        <td colspan="4" class="text-center py-4">No hay productos cargados.</td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -51,28 +72,125 @@
     </div>
 </div>
 
+<!-- ============================================================
+     MODAL: CREAR / EDITAR PRODUCTO
+     ============================================================ -->
+<div class="modal fade" id="modalProducto" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content crud-modal">
+      <form id="form-producto-modal" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="modal-header border-0">
+          <h4 class="modal-title" id="modalProductoTitulo">
+            <i class="bi bi-plus-circle text-warning"></i>
+            <span id="modalProductoTituloTexto">Nuevo Producto</span>
+          </h4>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="id_nombre" class="form-label fw-bold">Nombre *</label>
+            <input type="text" name="nombre" id="id_nombre"
+                   class="form-control {% if form_modal.nombre.errors %}is-invalid{% endif %}"
+                   placeholder="Ej: Milanesa con papas"
+                   autocomplete="off" required>
+            {% if form_modal.nombre.errors %}
+              <div class="invalid-feedback d-block">{{ form_modal.nombre.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label for="id_precio" class="form-label fw-bold">Precio (Gs.) *</label>
+            <input type="number" name="precio" id="id_precio"
+                   class="form-control {% if form_modal.precio.errors %}is-invalid{% endif %}"
+                   placeholder="0" min="0" step="any"
+                   autocomplete="off" required>
+            {% if form_modal.precio.errors %}
+              <div class="invalid-feedback d-block">{{ form_modal.precio.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label for="id_foto" class="form-label fw-bold">
+              Foto <span class="text-muted">(opcional)</span>
+            </label>
+            <input type="file" name="foto" id="id_foto"
+                   class="form-control {% if form_modal.foto.errors %}is-invalid{% endif %}"
+                   accept="image/*">
+            {% if form_modal.foto.errors %}
+              <div class="invalid-feedback d-block">{{ form_modal.foto.errors.0 }}</div>
+            {% endif %}
+            <div class="foto-preview-wrapper mt-2" id="fotoPreviewWrapper" style="display:none;">
+              <img id="fotoPreview" src="" alt="Vista previa"
+                   style="max-width: 120px; max-height: 120px; border-radius: 8px;">
+              <button type="button" class="btn btn-sm btn-outline-danger ms-2" id="btnQuitarFoto">
+                <i class="bi bi-x-circle"></i> Quitar
+              </button>
+            </div>
+            <small class="text-muted d-block mt-1" id="fotoActualTexto"></small>
+          </div>
+        </div>
+
+        <div class="modal-footer border-0 d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle"></i> Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary fw-bold">
+            <i class="bi bi-check-circle"></i> Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: ELIMINAR PRODUCTO
+     ============================================================ -->
 <div class="modal fade" id="modalEliminarProducto" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger"></i> Eliminar producto</h5>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content crud-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">
+          <i class="bi bi-exclamation-triangle text-danger"></i> Eliminar producto
+        </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        ¿Seguro que querés eliminar "<span id="modalEliminarProductoNombre"></span>"?
+        ¿Seguro que querés eliminar "<span id="modalEliminarProductoNombre" class="fw-bold"></span>"?
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer border-0 d-flex justify-content-between">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
         <form id="formEliminarProducto" method="post">
           {% csrf_token %}
-          <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Eliminar</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Eliminar
+          </button>
         </form>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Datos que la vista pasa al template si hay que reabrir el modal con errores -->
+<script id="datos-modal-producto" type="application/json">
+{
+  "modal_activo": {{ modal_activo|default:"null"|safe }},
+  "objeto_id": {% if objeto_editar %}{{ objeto_editar.pk }}{% else %}null{% endif %},
+  "valores": {
+    "nombre": "{{ form_modal.nombre.value|default:''|escapejs }}",
+    "precio": "{{ form_modal.precio.value|default:''|escapejs }}"
+  }
+}
+</script>
+
+{% load static %}
+<script src="{% static 'facturacion/js/producto_modal.js' %}"></script>
+
 <script>
+// Modal de eliminación (independiente del de CRUD)
 document.getElementById('modalEliminarProducto').addEventListener('show.bs.modal', function (event) {
     const boton = event.relatedTarget;
     document.getElementById('modalEliminarProductoNombre').textContent = boton.getAttribute('data-nombre');

@@ -30,3 +30,20 @@ class DetalleVenta(models.Model):
     # Precio copiado del producto en el momento de la venta: es una foto fija,
     # no una referencia viva a Producto.precio.
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+
+
+class ItemVentaManual(models.Model):
+    """Ítems cargados a mano en una venta, sin producto asociado del catálogo.
+    Ejemplos: 'Recargo de pan', 'Plato roto', 'Propina', etc.
+    El precio se carga manualmente en el momento de la venta.
+    """
+    venta = models.ForeignKey(
+        Venta,
+        on_delete=models.CASCADE,
+        related_name='items_manuales',
+    )
+    descripcion = models.CharField(max_length=200)
+    precio = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.descripcion} - Gs. {self.precio}"
