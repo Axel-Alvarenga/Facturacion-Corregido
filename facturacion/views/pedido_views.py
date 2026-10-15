@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -41,12 +42,17 @@ def pedido_create(request):
             except (ValueError, Producto.DoesNotExist):
                 error = 'Hubo un problema con los productos del pedido. Verificá e intentá de nuevo.'
             else:
+                messages.success(
+                    request,
+                    f'Pedido para "{mesa_o_cliente}" enviado a cocina.'
+                )
                 return redirect('pedido_list')
 
     productos = Producto.objects.all().order_by('nombre')
     context = {'productos': productos}
     if error:
         context['error'] = error
+        messages.error(request, error)
     return render(request, 'facturacion/pedidos/pedido_form.html', context)
 
 
@@ -63,4 +69,8 @@ def pedido_actualizar_estado(request, pk, nuevo_estado):
     if request.method == 'POST' and nuevo_estado in estados_validos:
         pedido.estado = nuevo_estado
         pedido.save(update_fields=['estado'])
+        messages.success(
+            request,
+            f'Pedido #{pedido.id} → {pedido.get_estado_display()}.'
+        )
     return redirect('pedido_list')

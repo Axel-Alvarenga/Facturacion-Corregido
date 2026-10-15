@@ -1,0 +1,90 @@
+{% extends 'facturacion/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h2 class="mb-0"><i class="bi bi-shield-check"></i> Detalle del registro</h2>
+    <a href="{% url 'auditoria_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver a la auditoría
+    </a>
+</div>
+
+<div class="card p-4 mb-4 shadow-sm border-0">
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="mb-2">
+                <span class="texto-secundario small">Fecha:</span>
+                <strong>{{ registro.fecha|date:"d/m/Y H:i:s" }}</strong>
+            </div>
+            <div class="mb-2">
+                <span class="texto-secundario small">Usuario:</span>
+                {% if registro.usuario %}
+                    <strong>{{ registro.usuario.username }}</strong>
+                {% else %}
+                    <span class="texto-secundario">Sistema</span>
+                {% endif %}
+            </div>
+            <div class="mb-2">
+                <span class="texto-secundario small">Acción:</span>
+                <strong>{{ registro.get_accion_display }}</strong>
+            </div>
+            <div class="mb-2">
+                <span class="texto-secundario small">Modelo:</span>
+                <code>{{ registro.modelo }}</code>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-2">
+                <span class="texto-secundario small">Objeto ID:</span>
+                <strong>{{ registro.objeto_id|default:"-" }}</strong>
+            </div>
+            <div class="mb-2">
+                <span class="texto-secundario small">Objeto:</span>
+                <strong>{{ registro.objeto_repr|default:"-" }}</strong>
+            </div>
+            <div class="mb-2">
+                <span class="texto-secundario small">IP:</span>
+                <strong>{{ registro.ip|default:"-" }}</strong>
+            </div>
+            <div class="mb-2">
+                <span class="texto-secundario small">Navegador:</span>
+                <strong class="small">{{ registro.user_agent|default:"-"|truncatechars:80 }}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if registro.cambios %}
+<div class="card p-4 mb-4 shadow-sm border-0">
+    <h4 class="mb-3"><i class="bi bi-list-check"></i> Cambios registrados</h4>
+    <div class="tabla-local">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Antes</th>
+                        <th>Después</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for campo, valores in registro.cambios.items %}
+                        <tr>
+                            <td><code>{{ campo }}</code></td>
+                            <td class="text-danger">{{ valores.0|default:"-" }}</td>
+                            <td class="text-success">{{ valores.1|default:"-" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if registro.metadata %}
+<div class="card p-4 shadow-sm border-0">
+    <h4 class="mb-3"><i class="bi bi-info-circle"></i> Metadata adicional</h4>
+    <pre class="bg-dark text-light p-3 rounded">{{ registro.metadata|pprint }}</pre>
+</div>
+{% endif %}
+{% endblock %}

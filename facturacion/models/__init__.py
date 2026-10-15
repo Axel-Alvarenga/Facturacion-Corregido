@@ -3,6 +3,7 @@ from .producto import Producto
 from .venta import Venta, DetalleVenta, ItemVentaManual, TIPO_PAGO_CHOICES
 from .pago import PagoDeuda
 from .pedido import PedidoCocina, DetallePedido
+from .auditoria import RegistroAuditoria
 
 __all__ = [
     'Cliente',
@@ -15,4 +16,5 @@ __all__ = [
     'PagoDeuda',
     'PedidoCocina',
     'DetallePedido',
+    'RegistroAuditoria',
 ]

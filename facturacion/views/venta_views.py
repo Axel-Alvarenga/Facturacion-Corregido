@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+from django.contrib import messages
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -18,6 +19,7 @@ def _cliente_consumidor_final():
 @login_required(login_url='login')
 def crear_venta(request):
     error = None
+    es_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if request.method == 'POST':
         cliente_id = request.POST.get('cliente', '').strip()
@@ -25,7 +27,6 @@ def crear_venta(request):
         productos_ids = request.POST.getlist('producto_id[]')
         cantidades = request.POST.getlist('cantidad[]')
 
-        # Ítems manuales (opcionales)
         manual_descripciones = request.POST.getlist('manual_descripcion[]')
         manual_precios = request.POST.getlist('manual_precio[]')
 
@@ -42,13 +43,16 @@ def crear_venta(request):
             else:
                 cliente = _cliente_consumidor_final()
 
+            if forma_pago == 'CREDITO' and cliente.nombre.strip().lower() == 'consumidor final':
+                error = 'No se puede vender a crédito a "Consumidor Final". Asigná un cliente real.'
+
+        if not error:
             try:
                 with transaction.atomic():
                     total_real = Decimal('0.00')
                     detalles = []
                     manuales = []
 
-                    # Productos del catálogo
                     for prod_id, cantidad_str in zip(productos_ids, cantidades):
                         cantidad = int(cantidad_str)
                         if cantidad < 1:
@@ -57,7 +61,6 @@ def crear_venta(request):
                         total_real += producto.precio * cantidad
                         detalles.append((producto, cantidad, producto.precio))
 
-                    # Ítems manuales
                     for desc, precio_str in zip(manual_descripciones, manual_precios):
                         desc = (desc or '').strip()
                         if not desc:
@@ -97,8 +100,33 @@ def crear_venta(request):
                         cliente.save(update_fields=['deuda'])
             except (ValueError, Producto.DoesNotExist):
                 error = 'Hubo un problema con los datos de la venta. Verificá e intentá de nuevo.'
-            else:
-                return redirect('informes')
+
+            # Si todo salió bien
+            if not error:
+                # NOTA: no se usa messages.success() acá porque el modal de éxito
+                # post-venta ya da el feedback visual. Si se usa el fallback sin
+                # JS (redirigir a venta_confirmada), esa pantalla también avisa.
+                if es_ajax:
+                    return JsonResponse({
+                        'ok': True,
+                        'venta': {
+                            'id': venta.id,
+                            'total': float(venta.total),
+                            'total_fmt': f'{venta.total:,.0f}',
+                            'cliente': venta.cliente.nombre,
+                            'forma_pago': venta.get_forma_pago_display(),
+                            'fecha': venta.fecha.strftime('%d/%m/%Y %H:%M'),
+                            'ticket_url': f'/ventas/{venta.id}/ticket/',
+                        }
+                    })
+                return redirect('venta_confirmada', venta_id=venta.id)
+
+    # Si llegamos acá, hay error o es GET
+    if es_ajax:
+        return JsonResponse({
+            'ok': False,
+            'error': error or 'Error desconocido.',
+        }, status=400)
 
     clientes = Cliente.objects.all().order_by('nombre')
     productos = Producto.objects.all()
@@ -108,7 +136,26 @@ def crear_venta(request):
     }
     if error:
         context['error'] = error
+        messages.error(request, error)
     return render(request, 'facturacion/ventas/venta_form.html', context)
+
+
+@login_required(login_url='login')
+def venta_confirmada(request, venta_id):
+    """Pantalla de éxito después de registrar una venta (fallback sin JS)."""
+    venta = get_object_or_404(Venta, pk=venta_id)
+    return render(request, 'facturacion/ventas/venta_confirmada.html', {
+        'venta': venta,
+    })
+
+
+@login_required(login_url='login')
+def ticket_venta(request, venta_id):
+    """Vista que renderiza el ticket para impresión (80mm)."""
+    venta = get_object_or_404(Venta, pk=venta_id)
+    return render(request, 'facturacion/ventas/ticket_venta.html', {
+        'venta': venta,
+    })
 
 
 @login_required(login_url='login')

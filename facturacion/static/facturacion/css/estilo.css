@@ -340,3 +340,498 @@ label, .form-label { color: var(--color-texto); }
     color: var(--color-texto-muted);
     font-size: 1.25rem;
 }
+/* =========================================================
+   Panel de TOTAL en la venta
+   ========================================================= */
+.total-panel {
+    background: linear-gradient(135deg, var(--color-superficie) 0%, var(--color-superficie-alt) 100%);
+    border: 2px solid var(--color-acento);
+    border-radius: var(--radio-card);
+    padding: 1.25rem;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(255, 193, 7, 0.15);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.total-panel .total-label {
+    font-size: 0.9rem;
+    color: var(--color-texto-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.total-panel .total-label i {
+    color: var(--color-acento);
+}
+
+.total-panel .total-valor {
+    font-size: 2.75rem;
+    font-weight: 800;
+    color: #4CAF50;
+    line-height: 1.1;
+    text-shadow: 0 0 12px rgba(76, 175, 80, 0.25);
+    transition: color 0.2s ease;
+    word-break: break-word;
+}
+
+.total-panel .total-contador {
+    margin-top: 0.5rem;
+    font-size: 1rem;
+    color: var(--color-texto-muted);
+    font-weight: 500;
+}
+
+.total-panel .total-contador i {
+    color: var(--color-acento);
+    margin-right: 0.25rem;
+}
+
+/* Animación "flash" cuando el total cambia */
+@keyframes total-flash {
+    0%   { transform: scale(1);    box-shadow: 0 4px 16px rgba(255, 193, 7, 0.15); }
+    40%  { transform: scale(1.04); box-shadow: 0 6px 24px rgba(255, 193, 7, 0.45); }
+    100% { transform: scale(1);    box-shadow: 0 4px 16px rgba(255, 193, 7, 0.15); }
+}
+
+.total-panel.total-flash {
+    animation: total-flash 0.45s ease;
+}
+
+/* Responsive: total más chico en celular */
+@media (max-width: 576px) {
+    .total-panel .total-valor {
+        font-size: 2rem;
+    }
+    .total-panel .total-label {
+        font-size: 0.8rem;
+    }
+}
+/* =========================================================
+   Aviso inline de crédito sin cliente
+   ========================================================= */
+.aviso-credito-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 1rem;
+    background-color: rgba(211, 47, 47, 0.12);
+    border-left: 4px solid var(--color-peligro);
+    border-radius: 0.5rem;
+    color: #ffb3ab;
+    font-size: 1rem;
+    animation: aviso-slide-down 0.3s ease-out;
+}
+
+.aviso-credito-inline i {
+    font-size: 1.3rem;
+    color: var(--color-peligro);
+    flex-shrink: 0;
+}
+
+.aviso-credito-inline strong {
+    color: #fff;
+}
+
+@keyframes aviso-slide-down {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.aviso-aparece {
+    animation: aviso-slide-down 0.3s ease-out;
+}
+
+/* Sacudida del input de cliente */
+@keyframes shake-input {
+    0%, 100% { transform: translateX(0); }
+    15%      { transform: translateX(-6px); }
+    30%      { transform: translateX(6px); }
+    45%      { transform: translateX(-4px); }
+    60%      { transform: translateX(4px); }
+    75%      { transform: translateX(-2px); }
+    90%      { transform: translateX(2px); }
+}
+
+.shake {
+    animation: shake-input 0.5s ease-in-out;
+}
+
+/* Estado de error en el input de cliente */
+.input-error {
+    border-color: var(--color-peligro) !important;
+    box-shadow: 0 0 0 0.2rem rgba(211, 47, 47, 0.35) !important;
+    background-color: rgba(211, 47, 47, 0.08) !important;
+}
+
+/* =========================================================
+   Texto secundario legible en modales oscuros
+   ========================================================= */
+.texto-secundario {
+    color: #c0c0c0;
+    font-size: 0.95rem;
+}
+.texto-secundario strong {
+    color: var(--color-texto);
+    font-weight: 700;
+}
+/* =========================================================
+   Toasts de notificación (éxito/error/aviso/info)
+   ========================================================= */
+.toast-container {
+    z-index: 1080;
+}
+
+.toast-arma {
+    background-color: var(--color-superficie-alt);
+    color: var(--color-texto);
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    border-left: 4px solid var(--color-acento);
+    min-width: 300px;
+    max-width: 420px;
+    overflow: hidden;
+    animation: toast-slide-in 0.35s ease-out;
+}
+
+.toast-arma.toast-success {
+    border-left-color: var(--color-exito);
+}
+.toast-arma.toast-error {
+    border-left-color: var(--color-peligro);
+}
+.toast-arma.toast-warning {
+    border-left-color: var(--color-acento);
+}
+.toast-arma.toast-info {
+    border-left-color: #2196F3;
+}
+
+.toast-header-arma {
+    background-color: transparent;
+    color: var(--color-texto);
+    border-bottom: 1px solid var(--color-borde);
+    padding: 0.6rem 0.9rem;
+}
+
+.toast-header-arma strong {
+    font-size: 0.95rem;
+    letter-spacing: 0.03em;
+}
+
+.toast-header-arma i {
+    font-size: 1.15rem;
+}
+
+.toast-body {
+    padding: 0.75rem 0.9rem;
+    font-size: 0.95rem;
+    color: var(--color-texto);
+}
+
+@keyframes toast-slide-in {
+    from { opacity: 0; transform: translateX(30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 576px) {
+    .toast-arma {
+        min-width: unset;
+        max-width: calc(100vw - 2rem);
+    }
+}
+/* =========================================================
+   Pantalla de confirmación post-venta
+   ========================================================= */
+.confirmacion-venta {
+    background: linear-gradient(135deg, var(--color-superficie) 0%, var(--color-superficie-alt) 100%);
+    border: 2px solid var(--color-exito);
+    border-radius: var(--radio-card);
+    box-shadow: 0 8px 30px rgba(76, 175, 80, 0.15);
+}
+
+.confirmacion-icono {
+    font-size: 4rem;
+    color: #4CAF50;
+    text-shadow: 0 0 20px rgba(76, 175, 80, 0.4);
+    animation: confirmacion-pop 0.5s ease-out;
+}
+
+@keyframes confirmacion-pop {
+    0%   { transform: scale(0.5); opacity: 0; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
+}
+
+.confirmacion-venta h2 {
+    color: var(--color-texto);
+    font-weight: 700;
+}
+
+.confirmacion-total {
+    background-color: rgba(76, 175, 80, 0.08);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.confirmacion-total-valor {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #4CAF50;
+    line-height: 1.1;
+}
+
+.confirmacion-datos {
+    background-color: var(--color-superficie-alt);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-borde);
+    text-align: left;
+}
+
+.confirmacion-datos strong {
+    color: var(--color-texto);
+}
+
+.confirmacion-venta .btn {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    font-size: 1.05rem;
+}
+
+@media (max-width: 576px) {
+    .confirmacion-icono { font-size: 3rem; }
+    .confirmacion-total-valor { font-size: 1.75rem; }
+}
+/* =========================================================
+   Modal de éxito post-venta (sin recargar)
+   ========================================================= */
+.modal-exito-venta {
+    border: 2px solid var(--color-exito) !important;
+}
+
+.modal-exito-venta .confirmacion-icono {
+    font-size: 4rem;
+    color: #4CAF50;
+    text-shadow: 0 0 20px rgba(76, 175, 80, 0.4);
+    animation: confirmacion-pop 0.5s ease-out;
+}
+
+@keyframes confirmacion-pop {
+    0%   { transform: scale(0.5); opacity: 0; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
+}
+
+.modal-exito-venta h3 {
+    color: var(--color-texto);
+    font-weight: 700;
+}
+
+.modal-exito-venta .confirmacion-total {
+    background-color: rgba(76, 175, 80, 0.08);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.modal-exito-venta .confirmacion-total-valor {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #4CAF50;
+    line-height: 1.1;
+}
+
+.modal-exito-venta .confirmacion-datos {
+    background-color: var(--color-superficie-alt);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-borde);
+}
+
+.modal-exito-venta .confirmacion-datos strong {
+    color: var(--color-texto);
+}
+
+.modal-exito-venta .btn {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    font-size: 1.05rem;
+}
+
+@media (max-width: 576px) {
+    .modal-exito-venta .confirmacion-icono { font-size: 3rem; }
+    .modal-exito-venta .confirmacion-total-valor { font-size: 1.75rem; }
+}
+/* =========================================================
+   Modal de éxito post-venta - versión compacta
+   ========================================================= */
+.modal-sm-exito {
+    max-width: 340px;
+}
+
+.modal-exito-venta {
+    border: 2px solid var(--color-exito) !important;
+}
+
+.exito-icono-chico {
+    font-size: 2.5rem;
+    color: #4CAF50;
+    text-shadow: 0 0 16px rgba(76, 175, 80, 0.4);
+    animation: confirmacion-pop 0.5s ease-out;
+    line-height: 1;
+}
+
+@keyframes confirmacion-pop {
+    0%   { transform: scale(0.5); opacity: 0; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
+}
+
+.modal-exito-venta h5 {
+    color: var(--color-texto);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.exito-total-chico {
+    background-color: rgba(76, 175, 80, 0.08);
+    border-radius: 0.4rem;
+    padding: 0.5rem;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.exito-total-valor-chico {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #4CAF50;
+    line-height: 1.1;
+}
+
+.exito-datos-chico {
+    background-color: var(--color-superficie-alt);
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.4rem;
+    border: 1px solid var(--color-borde);
+}
+
+.exito-datos-chico strong {
+    color: var(--color-texto);
+}
+
+.btn-sm-exito {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.75rem;
+}
+/* =========================================================
+   Tabla de auditoría - responsiva
+   ========================================================= */
+.tabla-auditoria {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.tabla-auditoria th,
+.tabla-auditoria td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+/* Anchos de columnas (se ajustan automáticamente según el breakpoint) */
+.tabla-auditoria .col-fecha   { width: 110px; }
+.tabla-auditoria .col-usuario { width: 110px; }
+.tabla-auditoria .col-accion  { width: 90px; }
+.tabla-auditoria .col-modelo  { width: 110px; }
+.tabla-auditoria .col-objeto  { width: auto; min-width: 200px; }
+.tabla-auditoria .col-ip      { width: 130px; }
+.tabla-auditoria .col-ver     { width: 60px; }
+
+/* El objeto puede ser largo: permite 2 líneas */
+.tabla-auditoria .col-objeto .objeto-texto {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Fecha: día y hora en dos líneas */
+.tabla-auditoria .fecha-dia { white-space: nowrap; }
+
+/* Responsive: en pantallas medianas y chicas, ajustar tamaños */
+@media (max-width: 992px) {
+    .tabla-auditoria .col-fecha   { width: 100px; }
+    .tabla-auditoria .col-usuario { width: 100px; }
+    .tabla-auditoria .col-accion  { width: 80px; }
+    .tabla-auditoria .col-objeto  { min-width: 150px; }
+}
+
+@media (max-width: 576px) {
+    .tabla-auditoria .col-fecha   { width: 90px; }
+    .tabla-auditoria .col-usuario { width: 90px; }
+    .tabla-auditoria .col-accion  { width: 75px; }
+    .tabla-auditoria .col-objeto  { min-width: 120px; }
+    .tabla-auditoria {
+        font-size: 0.85rem;
+    }
+}
+/* =========================================================
+   Navbar - ajustes de espaciado y alineación
+   ========================================================= */
+.navbar-local .navbar-brand {
+    font-size: 1.15rem;
+    white-space: nowrap;
+}
+
+.navbar-local .navbar-nav {
+    gap: 0.15rem;
+}
+
+.navbar-local .navbar-nav .nav-link {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.4rem;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.navbar-local .navbar-nav .nav-link:hover {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: var(--color-acento);
+}
+
+.navbar-local .navbar-nav .nav-link i {
+    margin-right: 0.3rem;
+}
+
+/* Badge de "Pedidos" en el navbar */
+.navbar-local .navbar-nav .badge {
+    margin-left: 0.3rem;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.45rem;
+}
+
+/* Cuando está colapsado (mobile), separar los items */
+@media (max-width: 1199.98px) {
+    .navbar-local .navbar-nav {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+    .navbar-local .navbar-nav .nav-link {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .navbar-local .navbar-nav .nav-item:last-child .nav-link {
+        border-bottom: none;
+    }
+    .navbar-local .d-flex {
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .navbar-local .d-flex .btn {
+        width: 100%;
+    }
+}

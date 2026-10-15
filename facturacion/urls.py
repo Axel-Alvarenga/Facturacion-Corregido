@@ -19,6 +19,8 @@ urlpatterns = [
     path('productos/eliminar/<int:pk>/', views.producto_delete, name='producto_delete'),
 
     path('ventas/nueva/', views.crear_venta, name='crear_venta'),
+    path('ventas/<int:venta_id>/confirmada/', views.venta_confirmada, name='venta_confirmada'),
+    path('ventas/<int:venta_id>/ticket/', views.ticket_venta, name='ticket_venta'),
 
     path('pedidos/', views.pedido_list, name='pedido_list'),
     path('pedidos/nuevo/', views.pedido_create, name='pedido_create'),
@@ -27,9 +29,9 @@ urlpatterns = [
     path('api/buscar-productos/', views.buscar_productos, name='buscar_productos'),
     path('informes/', views.informes, name='informes'),
     path('informes/exportar-excel/', views.informes_export_excel, name='informes_export_excel'),
-]
-from django.conf import settings
-from django.conf.urls.static import static
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Auditoría (solo superusuarios)
+    path('auditoria/', views.auditoria_list, name='auditoria_list'),
+    path('auditoria/exportar-excel/', views.auditoria_export_excel, name='auditoria_export_excel'),
+    path('auditoria/<int:pk>/', views.auditoria_detalle, name='auditoria_detalle'),
+]

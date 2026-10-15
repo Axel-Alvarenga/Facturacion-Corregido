@@ -11,6 +11,12 @@
   <form id="form-venta" method="POST">
     {% csrf_token %}
 
+    <!-- Banner de aviso (oculto por defecto) -->
+    <div id="aviso-credito" class="aviso-credito-inline" style="display: none;">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span>Para vender <strong>a crédito</strong>, asigná un cliente.</span>
+    </div>
+
     <input type="hidden" id="cliente-id" name="cliente">
 
     <div class="card shadow-sm border-0 p-3 mb-4">
@@ -51,7 +57,6 @@
     </div>
     </div>
 
-    <!-- Botón para agregar ítem manual -->
     <div class="mb-3">
       <button type="button" class="btn btn-outline-warning fw-bold" id="btnAgregarManual">
         <i class="bi bi-plus-circle"></i> Agregar ítem manual (recargo, propina, etc.)
@@ -75,14 +80,26 @@
     </div>
 
     <div class="row justify-content-end mt-4">
-      <div class="col-md-4 text-center">
-        <div class="card card-kpi p-3 mb-3">
-          <h3 class="m-0 fw-bold">TOTAL: Gs. <span id="total-monto">0</span></h3>
+      <div class="col-md-5">
+        <div class="total-panel mb-3" id="total-panel">
+          <div class="total-label">
+            <i class="bi bi-cash-stack"></i> TOTAL
+          </div>
+          <div class="total-valor" id="total-monto">Gs. 0</div>
+          <div class="total-contador" id="total-contador">
+            <i class="bi bi-basket"></i> <span id="total-items">0</span> ítems
+          </div>
           <input type="hidden" id="total-input" name="total" value="0">
         </div>
-        <button type="submit" id="btn-vender" class="btn btn-success btn-lg w-100 fw-bold">
-          <i class="bi bi-check-circle"></i> VENDER
-        </button>
+        <div class="d-flex gap-2">
+          <button type="button" id="btn-vaciar-carrito" class="btn btn-outline-danger fw-bold py-3"
+                  data-bs-toggle="modal" data-bs-target="#modalVaciarCarrito">
+            <i class="bi bi-trash"></i> Vaciar
+          </button>
+          <button type="button" id="btn-vender" class="btn btn-success btn-lg fw-bold py-3 flex-grow-1">
+            <i class="bi bi-check-circle"></i> VENDER
+          </button>
+        </div>
       </div>
     </div>
   </form>
@@ -109,7 +126,7 @@
         <div class="mb-3">
           <label for="manual-precio" class="form-label fw-bold">Precio (Gs.)</label>
           <input type="number" id="manual-precio" class="form-control"
-                 placeholder="0" min="0" step="100">
+                 placeholder="0" min="0" step="any" inputmode="numeric">
         </div>
       </div>
       <div class="modal-footer border-0 d-flex justify-content-between">
@@ -127,7 +144,7 @@
 <!-- ============================================================
      MODAL: CONFIRMAR VENTA
      ============================================================ -->
-<div class="modal fade" id="modalConfirmarVenta" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalConfirmarVenta" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content confirmar-venta-modal">
       <div class="modal-header border-0">
@@ -161,7 +178,88 @@
           <i class="bi bi-x-circle"></i> Cancelar
         </button>
         <button type="button" class="btn btn-success fw-bold" id="btnConfirmarVenta">
-          <i class="bi bi-check-circle"></i> Sí, vender
+          <i class="bi bi-check-circle"></i> <span id="btnConfirmarTexto">Sí, vender</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: ÉXITO (post-venta, sin recarga) - versión compacta
+     ============================================================ -->
+<div class="modal fade" id="modalVentaExitosa" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-sm-exito">
+    <div class="modal-content confirmar-venta-modal modal-exito-venta">
+      <div class="modal-body text-center p-3">
+        <div class="exito-icono-chico mb-2">
+          <i class="bi bi-check-circle-fill"></i>
+        </div>
+        <h5 class="mb-1">¡Venta registrada!</h5>
+        <p class="texto-secundario small mb-2">Venta <strong id="exito-venta-id">#0</strong></p>
+
+        <div class="exito-total-chico mb-3">
+          <div class="exito-total-valor-chico" id="exito-total">Gs. 0</div>
+        </div>
+
+        <div class="exito-datos-chico mb-3 text-start">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="texto-secundario small">Cliente:</span>
+            <strong class="small" id="exito-cliente">-</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="texto-secundario small">Pago:</span>
+            <strong class="small" id="exito-forma-pago">-</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="texto-secundario small">Fecha:</span>
+            <strong class="small" id="exito-fecha">-</strong>
+          </div>
+        </div>
+
+        <div class="d-grid gap-2">
+          <a href="#" id="btn-imprimir-ticket" target="_blank"
+             class="btn btn-warning fw-bold btn-sm-exito">
+            <i class="bi bi-printer-fill"></i> Imprimir ticket
+          </a>
+          <button type="button" id="btn-nueva-venta-modal"
+                  class="btn btn-success fw-bold btn-sm-exito">
+            <i class="bi bi-cart-plus-fill"></i> Nueva venta
+          </button>
+          <a href="{% url 'informes' %}" class="btn btn-outline-secondary btn-sm-exito">
+            <i class="bi bi-graph-up"></i> Ir a informes
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: CONFIRMAR VACIAR CARRITO
+     ============================================================ -->
+<div class="modal fade" id="modalVaciarCarrito" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content confirmar-venta-modal">
+      <div class="modal-header border-0">
+        <h4 class="modal-title">
+          <i class="bi bi-exclamation-triangle text-danger"></i> Vaciar carrito
+        </h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2 fs-5">¿Seguro que querés vaciar el carrito?</p>
+        <p class="texto-secundario mb-0">
+          Se van a eliminar <strong id="vaciar-cantidad">0</strong> ítem(s)
+          por un total de <strong id="vaciar-total" class="text-success">Gs. 0</strong>.
+        </p>
+      </div>
+      <div class="modal-footer border-0 d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> Cancelar
+        </button>
+        <button type="button" class="btn btn-danger fw-bold" id="btnConfirmarVaciar">
+          <i class="bi bi-trash"></i> Sí, vaciar
         </button>
       </div>
     </div>

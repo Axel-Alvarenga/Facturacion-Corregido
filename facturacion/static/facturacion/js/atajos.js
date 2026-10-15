@@ -1,5 +1,6 @@
 /* =========================================================
    Comedor A.R.M. - Atajos de teclado globales
+   Se carga desde base.html en TODAS las pantallas autenticadas.
    ========================================================= */
 
 (function () {
@@ -162,46 +163,38 @@
 
             e.preventDefault();
 
-            // ¿Estoy en la última fila de la tabla?
             const filaActual = e.target.closest('tr');
             const filas = tabla.querySelectorAll('tr');
             const esUltimaFila = filaActual === filas[filas.length - 1];
 
             if (esUltimaFila) {
-                // Ir al botón VENDER (o al submit del form)
                 const botonVender = document.getElementById('btn-vender');
                 if (botonVender) {
                     botonVender.focus();
-                } else {
-                    // Fallback: buscar el submit más cercano
-                    const submit = tabla.closest('form').querySelector('[type="submit"]');
-                    if (submit) submit.focus();
                 }
             } else {
-                // No es la última, volver al buscador
                 inputProd.focus();
             }
         });
 
-        // Al eliminar fila, volver al buscador
         tabla.addEventListener('click', function (e) {
-            if (e.target.closest('.btn-eliminar')) {
+            if (e.target.closest('.btn-eliminar') || e.target.closest('.btn-eliminar-manual')) {
                 setTimeout(function () { inputProd.focus(); }, 10);
             }
         });
     }
 
     // =========================================================
-    // 7. Enter en el botón VENDER envía el formulario
-    //    (los botones ya lo hacen por defecto, pero por si acaso)
+    // 7. Enter en el botón VENDER dispara el submit del form
     // =========================================================
-    function initBotonVender() {
-        const boton = document.getElementById('btn-vender');
-        if (!boton) return;
-        boton.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
+    function initEnterEnVender() {
+        const btnVender = document.getElementById('btn-vender');
+        if (!btnVender) return;
+
+        btnVender.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                boton.click();
+                btnVender.click();
             }
         });
     }
@@ -252,7 +245,7 @@
         initBuscadores();
         initFocoInicial();
         initEnterEnTabla();
-        initBotonVender();
+        initEnterEnVender();
         initAyuda();
     });
 })();

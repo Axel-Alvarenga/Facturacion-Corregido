@@ -1,0 +1,88 @@
+{% extends 'facturacion/base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+
+      <div class="card confirmacion-venta text-center p-4">
+
+        <!-- Ícono de éxito -->
+        <div class="confirmacion-icono mb-3">
+          <i class="bi bi-check-circle-fill"></i>
+        </div>
+
+        <h2 class="mb-2">¡Venta registrada!</h2>
+        <p class="texto-secundario mb-4">Venta <strong>#{{ venta.id }}</strong></p>
+
+        <!-- Total grande -->
+        <div class="confirmacion-total mb-4">
+          <div class="texto-secundario small mb-1">TOTAL</div>
+          <div class="confirmacion-total-valor">
+            Gs. {{ venta.total|floatformat:0 }}
+          </div>
+        </div>
+
+        <!-- Datos breves -->
+        <div class="confirmacion-datos mb-4">
+          <div class="d-flex justify-content-between mb-2">
+            <span class="texto-secundario">Cliente:</span>
+            <strong>{{ venta.cliente.nombre }}</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="texto-secundario">Forma de pago:</span>
+            <strong>{{ venta.get_forma_pago_display }}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="texto-secundario">Fecha:</span>
+            <strong>{{ venta.fecha|date:"d/m/Y H:i" }}</strong>
+          </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="d-grid gap-2">
+          <a href="{% url 'ticket_venta' venta.id %}" target="_blank"
+             class="btn btn-warning btn-lg fw-bold">
+            <i class="bi bi-printer-fill"></i> Imprimir ticket
+          </a>
+          <a href="{% url 'crear_venta' %}" class="btn btn-success btn-lg fw-bold">
+            <i class="bi bi-cart-plus-fill"></i> Nueva venta
+          </a>
+          <a href="{% url 'informes' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-graph-up"></i> Ir a informes
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Atajos de teclado específicos de esta pantalla
+document.addEventListener('DOMContentLoaded', function () {
+    // Ctrl + P -> imprimir ticket (abre el ticket en pestaña nueva)
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+            e.preventDefault();
+            const url = "{% url 'ticket_venta' venta.id %}";
+            window.open(url, '_blank');
+        }
+    });
+
+    // Ctrl + N -> nueva venta
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+            e.preventDefault();
+            window.location.href = "{% url 'crear_venta' %}";
+        }
+    });
+
+    // Foco automático en "Imprimir ticket" (es la acción más probable)
+    setTimeout(function () {
+        const btnImprimir = document.querySelector('.btn-warning');
+        if (btnImprimir) btnImprimir.focus();
+    }, 300);
+});
+</script>
+{% endblock %}

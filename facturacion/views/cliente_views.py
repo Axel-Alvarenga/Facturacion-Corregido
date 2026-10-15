@@ -1,4 +1,5 @@
 from decimal import Decimal
+from django.contrib import messages
 from django.db import transaction
 from django.db.models import Sum
 from django.db.models.deletion import ProtectedError
@@ -32,8 +33,10 @@ def cliente_create(request):
     if request.method == 'POST':
         form = ClienteForm(request.POST)
         if form.is_valid():
-            form.save()
+            cliente = form.save()
+            messages.success(request, f'Cliente "{cliente.nombre}" creado.')
             return redirect('cliente_list')
+        messages.error(request, 'Revisá los errores del formulario.')
     else:
         form = ClienteForm()
     return render(request, 'facturacion/clientes/cliente_form.html', {'form': form})
@@ -45,8 +48,10 @@ def cliente_update(request, pk):
     if request.method == 'POST':
         form = ClienteForm(request.POST, instance=cliente)
         if form.is_valid():
-            form.save()
+            cliente = form.save()
+            messages.success(request, f'Cliente "{cliente.nombre}" actualizado.')
             return redirect('cliente_list')
+        messages.error(request, 'Revisá los errores del formulario.')
     else:
         form = ClienteForm(instance=cliente)
     return render(request, 'facturacion/clientes/cliente_form.html', {
@@ -60,8 +65,14 @@ def cliente_delete(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
     if request.method == 'POST':
         try:
+            nombre = cliente.nombre
             cliente.delete()
+            messages.success(request, f'Cliente "{nombre}" eliminado.')
         except ProtectedError:
+            messages.error(
+                request,
+                f'No se puede eliminar a "{cliente.nombre}": tiene ventas registradas.'
+            )
             return redirect(
                 f"{reverse('cliente_list')}?error=no_se_puede_eliminar&nombre={cliente.nombre}"
             )
@@ -80,6 +91,10 @@ def pagar_deuda(request, cliente_id):
                 pago.save()
                 cliente.deuda -= pago.monto
                 cliente.save(update_fields=['deuda'])
+            messages.success(
+                request,
+                f'Pago de Gs. {pago.monto:,.0f} registrado para {cliente.nombre}.'
+            )
             return redirect('cliente_list')
     else:
         form = PagoDeudaForm(cliente=cliente)

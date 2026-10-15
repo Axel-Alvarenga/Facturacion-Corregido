@@ -3,7 +3,12 @@
    - Buscador AJAX de productos
    - Buscador de cliente (opcional)
    - Ítems manuales (recargos, propinas, etc.)
-   - Confirmación visual antes de vender
+   - Total animado + contador de ítems
+   - Confirmación modal + envío AJAX (sin recargar)
+   - Modal de éxito post-venta (compacto)
+   - Vaciar carrito con confirmación
+   - Aviso inline de crédito sin cliente
+   - Enter en el buscador vacío → abre modal de confirmación
    ========================================================= */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -20,6 +25,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalEl = document.getElementById('modalConfirmarVenta');
     const modalInstance = modalEl ? new bootstrap.Modal(modalEl) : null;
     const btnConfirmar = document.getElementById('btnConfirmarVenta');
+    const btnConfirmarTexto = document.getElementById('btnConfirmarTexto');
+
+    // Modal de éxito
+    const modalExitoEl = document.getElementById('modalVentaExitosa');
+    const modalExitoInstance = modalExitoEl ? new bootstrap.Modal(modalExitoEl) : null;
 
     // Modal de ítem manual
     const modalManualEl = document.getElementById('modalItemManual');
@@ -28,6 +38,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnGuardarManual = document.getElementById('btnGuardarManual');
     const inputManualDesc = document.getElementById('manual-descripcion');
     const inputManualPrecio = document.getElementById('manual-precio');
+
+    // Modal de vaciar carrito
+    const modalVaciarEl = document.getElementById('modalVaciarCarrito');
+    const modalVaciarInstance = modalVaciarEl ? new bootstrap.Modal(modalVaciarEl) : null;
+    const btnConfirmarVaciar = document.getElementById('btnConfirmarVaciar');
+
+    // Select de forma de pago
+    const selectFormaPago = document.getElementById('select-forma-pago');
+
+    // Banner de aviso inline por crédito sin cliente
+    const avisoCredito = document.getElementById('aviso-credito');
+
+    // Botón VENDER
+    const btnVender = document.getElementById('btn-vender');
 
     // ============================================
     // Foco inicial
@@ -46,6 +70,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const q = this.value.toLowerCase().trim();
         resCliente.innerHTML = '';
         clienteIdInput.value = '';
+        ocultarAvisoCredito();
         if (q.length === 0) return;
 
         const filtrados = clientesData.filter(c => c.nombre.toLowerCase().includes(q));
@@ -60,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 inputCliente.value = c.nombre;
                 clienteIdInput.value = c.id;
                 resCliente.innerHTML = '';
+                ocultarAvisoCredito();
             };
             resCliente.appendChild(item);
         });
@@ -93,6 +119,38 @@ document.addEventListener('DOMContentLoaded', function () {
                     resProd.appendChild(item);
                 });
             });
+    });
+
+    // ============================================
+    // Enter en el buscador de productos:
+    //   - Si hay texto y sugerencias, agrega el primero
+    //   - Si está vacío y hay productos en la tabla, abre modal de confirmación
+    // ============================================
+    inputProd.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+
+        const texto = inputProd.value.trim();
+        const items = resProd.querySelectorAll('a');
+        const hayProductosEnTabla = cuerpoTabla.children.length > 0;
+
+        // Caso 1: hay texto escrito → dejar que el autocomplete lo maneje
+        // (el autocomplete ya dispara el click del primer resultado)
+        if (texto.length > 0) {
+            // Si hay sugerencias, el handler del autocomplete las procesa
+            // (no hacemos nada especial acá).
+            if (items.length > 0) return;
+            // Si no hay sugerencias pero hay texto, evitamos que se envíe el form
+            e.preventDefault();
+            return;
+        }
+
+        // Caso 2: el buscador está vacío
+        e.preventDefault();
+
+        if (hayProductosEnTabla) {
+            // Hay productos cargados: abrir modal de confirmación
+            formVenta.requestSubmit();
+        }
     });
 
     // ============================================
@@ -160,7 +218,6 @@ document.addEventListener('DOMContentLoaded', function () {
             inputManualDesc.focus();
         });
 
-        // Enter en descripción -> ir a precio; Enter en precio -> guardar
         inputManualDesc.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -201,9 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const tr = document.createElement('tr');
         tr.dataset.precio = precio;
         tr.dataset.tipo = 'manual';
-        // Estilo diferente para distinguirlo
         tr.classList.add('fila-manual');
-        // No se envía "cantidad", el precio ya es total del ítem
         tr.innerHTML = `
             <td>
                 <i class="bi bi-pencil-square text-warning"></i>
@@ -212,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </td>
             <td class="fw-bold">Gs. ${precio.toLocaleString('es-PY')}</td>
             <td>
-                <span class="text-muted small">Ítem manual (sin cantidad)</span>
+                <span class="texto-secundario small">Ítem manual (sin cantidad)</span>
                 <input type="hidden" name="manual_precio[]" value="${precio}">
             </td>
             <td class="text-center">
@@ -231,13 +286,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================
-    // Recálculo del total (incluye productos + manuales)
+    // Recálculo del total + contador + animación
     // ============================================
+    let ultimoTotal = 0;
+
     function recalcularTotal() {
         let total = 0;
+        let cantidadItems = 0;
+
         document.querySelectorAll('#cuerpo-tabla tr').forEach(row => {
             const tipo = row.dataset.tipo;
             const precio = parseFloat(row.dataset.precio) || 0;
+            cantidadItems += 1;
 
             if (tipo === 'manual') {
                 total += precio;
@@ -246,12 +306,93 @@ document.addEventListener('DOMContentLoaded', function () {
                 total += precio * cant;
             }
         });
-        document.getElementById('total-monto').innerText = total.toLocaleString('es-PY');
-        document.getElementById('total-input').value = total;
+
+        const totalTexto = 'Gs. ' + total.toLocaleString('es-PY');
+        const totalEl = document.getElementById('total-monto');
+        if (totalEl) totalEl.innerText = totalTexto;
+
+        const itemsEl = document.getElementById('total-items');
+        if (itemsEl) itemsEl.innerText = cantidadItems;
+
+        const totalInput = document.getElementById('total-input');
+        if (totalInput) totalInput.value = total;
+
+        if (total !== ultimoTotal) {
+            const panel = document.getElementById('total-panel');
+            if (panel) {
+                panel.classList.remove('total-flash');
+                void panel.offsetWidth;
+                panel.classList.add('total-flash');
+                setTimeout(() => panel.classList.remove('total-flash'), 450);
+            }
+            ultimoTotal = total;
+        }
     }
 
     // ============================================
-    // Submit: abre el modal de confirmación
+    // Vaciar carrito
+    // ============================================
+    if (modalVaciarEl) {
+        modalVaciarEl.addEventListener('show.bs.modal', function () {
+            const cantidadItems = cuerpoTabla.children.length;
+            const totalTexto = document.getElementById('total-monto').innerText;
+            document.getElementById('vaciar-cantidad').textContent = cantidadItems;
+            document.getElementById('vaciar-total').textContent = totalTexto;
+        });
+
+        modalVaciarEl.addEventListener('shown.bs.modal', function () {
+            const btnCancelar = modalVaciarEl.querySelector('.btn-secondary');
+            if (btnCancelar) btnCancelar.focus();
+        });
+    }
+
+    if (btnConfirmarVaciar) {
+        btnConfirmarVaciar.addEventListener('click', function () {
+            cuerpoTabla.innerHTML = '';
+            recalcularTotal();
+            modalVaciarInstance.hide();
+            inputProd.focus();
+        });
+    }
+
+    // ============================================
+    // Aviso inline por crédito sin cliente
+    // ============================================
+    function mostrarAvisoCredito() {
+        if (avisoCredito) {
+            avisoCredito.style.display = 'flex';
+            avisoCredito.classList.remove('aviso-aparece');
+            void avisoCredito.offsetWidth;
+            avisoCredito.classList.add('aviso-aparece');
+        }
+        if (inputCliente) {
+            inputCliente.classList.remove('shake');
+            void inputCliente.offsetWidth;
+            inputCliente.classList.add('shake', 'input-error');
+            setTimeout(function () {
+                inputCliente.classList.remove('shake');
+            }, 500);
+            setTimeout(function () {
+                inputCliente.focus();
+            }, 100);
+        }
+        if (avisoCredito) {
+            avisoCredito.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function ocultarAvisoCredito() {
+        if (avisoCredito) avisoCredito.style.display = 'none';
+        if (inputCliente) inputCliente.classList.remove('input-error');
+    }
+
+    function esConsumidorFinal() {
+        const nombre = inputCliente.value.trim().toLowerCase();
+        return nombre === 'consumidor final';
+    }
+
+    // ============================================
+    // Submit del form: valida y abre modal de confirmación
     // ============================================
     formVenta.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -262,30 +403,132 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        const formaPago = selectFormaPago ? selectFormaPago.value : 'EFECTIVO';
+        const tieneClienteReal = inputCliente.value.trim() !== '' &&
+                                 clienteIdInput.value !== '' &&
+                                 !esConsumidorFinal();
+
+        if (formaPago === 'CREDITO' && !tieneClienteReal) {
+            mostrarAvisoCredito();
+            return;
+        }
+
+        ocultarAvisoCredito();
+
         const cantidadItems = cuerpoTabla.children.length;
         const totalTexto = document.getElementById('total-monto').innerText;
         const clienteTexto = inputCliente.value.trim() || 'Consumidor Final';
 
         document.getElementById('confirmar-cantidad').textContent = cantidadItems;
         document.getElementById('confirmar-cliente').textContent = clienteTexto;
-        document.getElementById('confirmar-total').textContent = 'Gs. ' + totalTexto;
+        document.getElementById('confirmar-total').textContent = totalTexto;
 
         modalInstance.show();
     });
 
     // ============================================
-    // Confirmar venta desde el modal
+    // El botón VENDER dispara el submit del form
     // ============================================
-    if (btnConfirmar) {
-        btnConfirmar.addEventListener('click', function () {
-            modalInstance.hide();
-            formVenta.submit();
+    if (btnVender) {
+        btnVender.addEventListener('click', function () {
+            formVenta.requestSubmit();
         });
     }
 
+    // ============================================
+    // Confirmar venta (AJAX, sin recargar)
+    // ============================================
+    if (btnConfirmar) {
+        btnConfirmar.addEventListener('click', function () {
+            enviarVentaAjax();
+        });
+    }
+
+    function enviarVentaAjax() {
+        btnConfirmar.disabled = true;
+        if (btnConfirmarTexto) btnConfirmarTexto.textContent = 'Procesando...';
+        btnConfirmar.classList.add('disabled');
+
+        const formData = new FormData(formVenta);
+
+        fetch(formVenta.action || window.location.href, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: formData,
+            credentials: 'same-origin',
+        })
+        .then(async (res) => {
+            const data = await res.json();
+            return { ok: res.ok, data };
+        })
+        .then(({ ok, data }) => {
+            if (ok && data.ok) {
+                modalInstance.hide();
+                mostrarModalExito(data.venta);
+            } else {
+                alert('Error: ' + (data.error || 'No se pudo registrar la venta.'));
+                restaurarBotonConfirmar();
+            }
+        })
+        .catch((err) => {
+            console.error(err);
+            alert('Error de conexión. Revisá tu red e intentá de nuevo.');
+            restaurarBotonConfirmar();
+        });
+    }
+
+    function restaurarBotonConfirmar() {
+        btnConfirmar.disabled = false;
+        if (btnConfirmarTexto) btnConfirmarTexto.textContent = 'Sí, vender';
+        btnConfirmar.classList.remove('disabled');
+    }
+
+    // ============================================
+    // Mostrar modal de éxito con datos de la venta
+    // ============================================
+    function mostrarModalExito(venta) {
+        document.getElementById('exito-venta-id').textContent = '#' + venta.id;
+        document.getElementById('exito-total').textContent = 'Gs. ' + venta.total_fmt;
+        document.getElementById('exito-cliente').textContent = venta.cliente;
+        document.getElementById('exito-forma-pago').textContent = venta.forma_pago;
+        document.getElementById('exito-fecha').textContent = venta.fecha;
+        document.getElementById('btn-imprimir-ticket').href = venta.ticket_url;
+
+        cuerpoTabla.innerHTML = '';
+        inputCliente.value = '';
+        clienteIdInput.value = '';
+        inputProd.value = '';
+        selectFormaPago.value = 'EFECTIVO';
+        recalcularTotal();
+
+        restaurarBotonConfirmar();
+
+        setTimeout(function () {
+            modalExitoInstance.show();
+        }, 250);
+    }
+
+    // ============================================
+    // Botón "Nueva venta" del modal de éxito
+    // ============================================
+    const btnNuevaVentaModal = document.getElementById('btn-nueva-venta-modal');
+    if (btnNuevaVentaModal) {
+        btnNuevaVentaModal.addEventListener('click', function () {
+            modalExitoInstance.hide();
+            setTimeout(function () {
+                inputProd.focus();
+            }, 300);
+        });
+    }
+
+    // ============================================
+    // Enter en el modal de confirmación
+    // ============================================
     if (modalEl) {
         modalEl.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !btnConfirmar.disabled) {
                 e.preventDefault();
                 btnConfirmar.click();
             }
@@ -293,6 +536,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         modalEl.addEventListener('shown.bs.modal', function () {
             btnConfirmar.focus();
+        });
+    }
+
+    // Foco en "Nueva venta" al abrir el modal de éxito
+    if (modalExitoEl) {
+        modalExitoEl.addEventListener('shown.bs.modal', function () {
+            const btnNueva = document.getElementById('btn-nueva-venta-modal');
+            if (btnNueva) btnNueva.focus();
         });
     }
 });

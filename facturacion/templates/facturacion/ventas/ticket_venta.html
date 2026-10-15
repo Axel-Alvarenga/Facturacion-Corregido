@@ -2,42 +2,178 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Ticket de Venta - Comedor A.R.M.</title>
+    <title>Ticket #{{ venta.id }} - Comedor A.R.M.</title>
     <style>
-        body { font-family: 'Courier New', Courier, monospace; width: 300px; margin: 0 auto; padding: 10px; color: #000; background: #fff; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            width: 300px;
+            margin: 0 auto;
+            padding: 10px;
+            color: #000;
+            background: #fff;
+            font-size: 12px;
+        }
         .text-center { text-align: center; }
-        .line { border-bottom: 1px dashed #000; margin: 10px 0; }
-        table { width: 100%; font-size: 12px; }
-        th, td { text-align: left; padding: 3px 0; }
-        .total { font-size: 14px; font-weight: bold; margin-top: 10px; }
-        @media print { .no-print { display: none; } }
+        .text-right { text-align: right; }
+        .line { border-bottom: 1px dashed #000; margin: 8px 0; }
+        .double-line { border-bottom: 2px solid #000; margin: 8px 0; }
+
+        h1 {
+            margin: 0;
+            font-size: 16px;
+            letter-spacing: 0.1em;
+        }
+        .subtitulo {
+            margin: 2px 0;
+            font-size: 10px;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        th {
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
+        }
+        td {
+            padding: 3px 0;
+            vertical-align: top;
+        }
+        td.desc { width: 55%; }
+        td.cant { width: 15%; text-align: center; }
+        td.precio { width: 30%; text-align: right; }
+
+        .total-row {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 2px solid #000;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 10px;
+            text-align: center;
+        }
+        .footer strong { font-size: 12px; }
+
+        .no-print { }
+        .boton-imprimir {
+            display: block;
+            width: 100%;
+            margin-top: 15px;
+            padding: 10px;
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .boton-imprimir:hover { background: #333; }
+
+        @media print {
+            body { margin: 0; padding: 5px; width: 80mm; }
+            .no-print { display: none !important; }
+            .boton-imprimir { display: none !important; }
+        }
     </style>
 </head>
 <body>
+
+    <!-- ENCABEZADO -->
     <div class="text-center">
-        <h2 style="margin: 0;">COMEDOR A.R.M.</h2>
-        <p style="margin: 2px 0; font-size: 11px;">Gastronomía y Sabor</p>
-        <p style="margin: 2px 0; font-size: 10px;">Encarnación, Paraguay</p>
+        <h1>COMEDOR A.R.M.</h1>
+        <p class="subtitulo">Gastronomía y Sabor</p>
+        <p class="subtitulo">Encarnación, Paraguay</p>
     </div>
+
     <div class="line"></div>
-    <p style="font-size: 11px; margin: 4px 0;"><strong>Ticket #:</strong> {{ venta.id }}</p>
-    <p style="font-size: 11px; margin: 4px 0;"><strong>Fecha:</strong> {{ venta.fecha|date:"d/m/Y H:i" }}</p>
-    <p style="font-size: 11px; margin: 4px 0;"><strong>Cliente:</strong> {{ venta.cliente.nombre }}</p>
+
+    <!-- DATOS DE LA VENTA -->
+    <p style="margin: 3px 0;">
+        <strong>Ticket #:</strong> {{ venta.id }}
+    </p>
+    <p style="margin: 3px 0;">
+        <strong>Fecha:</strong> {{ venta.fecha|date:"d/m/Y H:i" }}
+    </p>
+    <p style="margin: 3px 0;">
+        <strong>Cliente:</strong> {{ venta.cliente.nombre }}
+    </p>
+    {% if venta.cliente.nombre_local %}
+    <p style="margin: 3px 0;">
+        <strong>Local:</strong> {{ venta.cliente.nombre_local }}
+    </p>
+    {% endif %}
+    <p style="margin: 3px 0;">
+        <strong>Pago:</strong> {{ venta.get_forma_pago_display|upper }}
+    </p>
+
     <div class="line"></div>
+
+    <!-- DETALLES -->
     <table>
-        <thead><tr><th>Cant / Desc</th><th style="text-align: right;">Total</th></tr></thead>
+        <thead>
+            <tr>
+                <th class="desc">Producto</th>
+                <th class="cant">Cant</th>
+                <th class="precio">Subtotal</th>
+            </tr>
+        </thead>
         <tbody>
             {% for detalle in venta.detalles.all %}
-            <tr><td>{{ detalle.cantidad }}x {{ detalle.producto.nombre }}</td><td style="text-align: right;">${{ detalle.subtotal }}</td></tr>
+            <tr>
+                <td class="desc">{{ detalle.producto.nombre }}</td>
+                <td class="cant">{{ detalle.cantidad }}</td>
+                <td class="precio">Gs. {% widthratio detalle.precio_unitario 1 detalle.cantidad %}</td>
+            </tr>
+            {% endfor %}
+            {% for item in venta.items_manuales.all %}
+            <tr>
+                <td class="desc">
+                    <em>{{ item.descripcion }}</em>
+                </td>
+                <td class="cant">1</td>
+                <td class="precio">Gs. {{ item.precio|floatformat:0 }}</td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>
-    <div class="line"></div>
-    <div style="display: flex; justify-content: space-between;" class="total"><span>TOTAL:</span><span>${{ venta.total }}</span></div>
-    <div class="line"></div>
-    <div class="text-center" style="font-size: 11px; margin-top: 15px;"><p>¡Gracias por su compra!</p><p>Comedor A.R.M.</p></div>
-    <div class="text-center no-print" style="margin-top: 20px;">
-        <button onclick="window.print()" style="padding: 8px 15px; cursor: pointer; background: #000; color: #fff; border: none; border-radius: 4px;">🖨️ Imprimir Ticket</button>
+
+    <div class="double-line"></div>
+
+    <!-- TOTAL -->
+    <div style="display: flex; justify-content: space-between;" class="total-row">
+        <span>TOTAL:</span>
+        <span>Gs. {{ venta.total|floatformat:0 }}</span>
     </div>
+
+    <div class="line"></div>
+
+    <!-- PIE -->
+    <div class="footer">
+        <p style="margin: 5px 0;">¡Gracias por su compra!</p>
+        <p style="margin: 5px 0;"><strong>COMEDOR A.R.M.</strong></p>
+        <p style="margin: 5px 0;">Documento no válido como factura legal</p>
+    </div>
+
+    <!-- BOTÓN IMPRIMIR (no sale en el papel) -->
+    <button class="boton-imprimir no-print" onclick="window.print()">
+        🖨️ Imprimir ticket
+    </button>
+
+    <script>
+        // Auto-print opcional: descomentar si querés que se imprima solo
+        // setTimeout(function () { window.print(); }, 500);
+    </script>
 </body>
 </html>
