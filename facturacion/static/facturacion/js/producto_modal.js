@@ -1,5 +1,7 @@
 /* =========================================================
    Comedor A.R.M. - Modal de Producto (crear / editar)
+   - Manejo robusto de respuestas
+   - Detección de duplicado sin cerrar el modal
    ========================================================= */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -19,19 +21,35 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnQuitar = document.getElementById('btnQuitarFoto');
     const textoFotoActual = document.getElementById('fotoActualTexto');
 
-    // Leer los datos que Django puso en el JSON del HTML
+    const avisoError = document.getElementById('producto-aviso-error');
+    const avisoErrorTexto = document.getElementById('producto-aviso-error-texto');
+
+    // Leer los datos que Django puso en el JSON del HTML (con manejo de errores)
+    let datosModal = {};
     const datosModalRaw = document.getElementById('datos-modal-producto');
-    const datosModal = datosModalRaw ? JSON.parse(datosModalRaw.textContent || '{}') : {};
+    if (datosModalRaw) {
+        try {
+            datosModal = JSON.parse(datosModalRaw.textContent || '{}');
+        } catch (err) {
+            console.error('No se pudo parsear el JSON del modal:', err);
+            console.error('Contenido:', datosModalRaw.textContent);
+            datosModal = {};
+        }
+    }
 
     const urlsBase = {
         crear: "/productos/nuevo/",
-        editar: "/productos/editar/" // se completa con el id
+        editar: "/productos/editar/"
     };
 
-    // Al abrir el modal (ya sea con click o programáticamente)
+    let enviando = false;
+
     modalEl.addEventListener('show.bs.modal', function (event) {
         const boton = event.relatedTarget;
         const modo = boton ? boton.dataset.modo : (datosModal.modal_activo || 'crear');
+
+        // Ocultar aviso de error
+        if (avisoError) avisoError.style.display = 'none';
 
         if (modo === 'editar') {
             const id = boton ? boton.dataset.id : datosModal.objeto_id;
@@ -43,16 +61,14 @@ document.addEventListener('DOMContentLoaded', function () {
             iconoTitulo.className = 'bi bi-pencil text-warning';
             inputNombre.value = nombre || '';
 
-            // Convertir el precio a un número limpio
             const precioNum = precio !== undefined && precio !== ''
                 ? parseFloat(precio)
                 : null;
             inputPrecio.value = (precioNum !== null && !isNaN(precioNum)) ? precioNum : '';
 
-            inputFoto.value = ''; // no se puede precargar por seguridad
+            inputFoto.value = '';
             form.action = urlsBase.editar + id + '/';
 
-            // Mostrar foto actual si existe
             if (fotoUrl) {
                 preview.src = fotoUrl;
                 previewWrapper.style.display = 'block';
@@ -75,12 +91,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Foco en el primer input al abrir el modal
     modalEl.addEventListener('shown.bs.modal', function () {
         inputNombre.focus();
     });
 
-    // Vista previa al seleccionar una nueva foto
     inputFoto.addEventListener('change', function () {
         const archivo = this.files[0];
         if (!archivo) {
@@ -96,7 +110,6 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.readAsDataURL(archivo);
     });
 
-    // Botón "Quitar" la foto seleccionada
     btnQuitar.addEventListener('click', function () {
         inputFoto.value = '';
         preview.src = '';
@@ -104,23 +117,82 @@ document.addEventListener('DOMContentLoaded', function () {
         textoFotoActual.textContent = '';
     });
 
-    // Al enviar: validación mínima del lado del cliente
+    // ============================================
+    // Envío por AJAX con manejo de errores
+    // ============================================
     form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        if (enviando) return;
+
+        // Validación mínima
         if (!inputNombre.value.trim()) {
-            e.preventDefault();
             alert('Ingresá un nombre.');
             inputNombre.focus();
             return;
         }
         if (!inputPrecio.value || parseFloat(inputPrecio.value) < 0) {
-            e.preventDefault();
             alert('Ingresá un precio válido.');
             inputPrecio.focus();
             return;
         }
+
+        enviando = true;
+
+        // Ocultar aviso previo
+        if (avisoError) avisoError.style.display = 'none';
+
+        const formData = new FormData(form);
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: formData,
+            credentials: 'same-origin',
+        })
+        .then(async (res) => {
+            const texto = await res.text();
+            let data = null;
+            try {
+                data = JSON.parse(texto);
+            } catch (err) {
+                console.error('Respuesta no JSON del servidor:', texto.substring(0, 500));
+                throw new Error('El servidor devolvió una respuesta inesperada.');
+            }
+            return { status: res.status, data };
+        })
+        .then(({ status, data }) => {
+            enviando = false;
+
+            if (status === 200 && data.ok) {
+                // Éxito: recargar la lista
+                window.location.reload();
+            } else if (data.errors) {
+                // Errores del form: mostrar sin cerrar
+                let mensajes = [];
+                Object.keys(data.errors).forEach(function (campo) {
+                    mensajes.push(data.errors[campo].join(' '));
+                });
+                if (avisoError && avisoErrorTexto) {
+                    avisoErrorTexto.textContent = ' ' + mensajes.join(' ');
+                    avisoError.style.display = 'block';
+                    avisoError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    alert(mensajes.join('\n'));
+                }
+            } else {
+                alert('Error: ' + (data.error || 'No se pudo guardar.'));
+            }
+        })
+        .catch((err) => {
+            enviando = false;
+            console.error(err);
+            alert('Error: ' + err.message);
+        });
     });
 
-    // Abrir el modal automáticamente si la vista lo pidió (por errores)
     if (datosModal.modal_activo === 'crear' || datosModal.modal_activo === 'editar') {
         setTimeout(function () {
             const m = bootstrap.Modal.getOrCreateInstance(modalEl);

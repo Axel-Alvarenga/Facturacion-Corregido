@@ -1,14 +1,10 @@
 /* =========================================================
    Comedor A.R.M. - Atajos de teclado globales
-   Se carga desde base.html en TODAS las pantallas autenticadas.
    ========================================================= */
 
 (function () {
     'use strict';
 
-    // =========================================================
-    // 1. Atajos de navegación rápida (Alt + tecla)
-    // =========================================================
     function initAtajosNavegacion() {
         const mapa = {
             '1': 'dashboard',
@@ -37,9 +33,6 @@
         });
     }
 
-    // =========================================================
-    // 2. Escape cierra modales abiertos
-    // =========================================================
     function initEscapeModales() {
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
@@ -51,9 +44,6 @@
         });
     }
 
-    // =========================================================
-    // 3. Ctrl + Enter envía el formulario principal
-    // =========================================================
     function initCtrlEnter() {
         document.addEventListener('keydown', function (e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -67,9 +57,6 @@
         });
     }
 
-    // =========================================================
-    // 4. Buscadores con autocompletado
-    // =========================================================
     function initBuscadores() {
         document.querySelectorAll('[data-autocomplete]').forEach(function (input) {
             const contenedorId = input.dataset.resultados;
@@ -79,9 +66,12 @@
             let indice = -1;
 
             function marcarActivo() {
-                contenedor.querySelectorAll('a').forEach((el, i) => {
-                    el.classList.toggle('active', i === indice);
-                });
+                const items = contenedor.querySelectorAll('a');
+                items.forEach((el, i) => el.classList.toggle('active', i === indice));
+                // Hacer scroll al item activo si está fuera de la vista
+                if (indice >= 0 && items[indice]) {
+                    items[indice].scrollIntoView({ block: 'nearest' });
+                }
             }
 
             input.addEventListener('keydown', function (e) {
@@ -115,9 +105,6 @@
         });
     }
 
-    // =========================================================
-    // 5. Foco inicial automático
-    // =========================================================
     function initFocoInicial() {
         function aplicarFoco() {
             const inputProd = document.getElementById('buscar-prod');
@@ -144,11 +131,6 @@
         setTimeout(aplicarFoco, 500);
     }
 
-    // =========================================================
-    // 6. Navegación con Enter en la tabla de productos
-    //    - Si estás en la ÚLTIMA fila → botón VENDER
-    //    - Si estás en una fila del medio → vuelve al buscador
-    // =========================================================
     function initEnterEnTabla() {
         const tabla = document.getElementById('cuerpo-tabla');
         const inputProd = document.getElementById('buscar-prod');
@@ -184,9 +166,6 @@
         });
     }
 
-    // =========================================================
-    // 7. Enter en el botón VENDER dispara el submit del form
-    // =========================================================
     function initEnterEnVender() {
         const btnVender = document.getElementById('btn-vender');
         if (!btnVender) return;
@@ -199,9 +178,6 @@
         });
     }
 
-    // =========================================================
-    // 8. Ayuda con "?"
-    // =========================================================
     function initAyuda() {
         document.addEventListener('keydown', function (e) {
             if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
@@ -235,9 +211,6 @@
         });
     }
 
-    // =========================================================
-    // Inicialización
-    // =========================================================
     document.addEventListener('DOMContentLoaded', function () {
         initAtajosNavegacion();
         initEscapeModales();

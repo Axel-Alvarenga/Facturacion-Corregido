@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.db.models import Sum
 from django.db.models.deletion import ProtectedError
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -11,8 +12,6 @@ from ..forms import ClienteForm, PagoDeudaForm
 
 
 def _contexto_lista(request, form_modal=None, modal_activo=None, objeto_editar=None):
-    """Construye el contexto de la lista de clientes,
-    opcionalmente con un modal abierto."""
     clientes = Cliente.objects.all()
     error_eliminar = None
 
@@ -22,7 +21,6 @@ def _contexto_lista(request, form_modal=None, modal_activo=None, objeto_editar=N
             "registradas, y borrarlo perdería ese historial."
         )
 
-    # Si no nos pasaron form, pero la URL trae ?abrir_modal=..., lo armamos
     if modal_activo is None:
         abrir_modal = request.GET.get('abrir_modal', '').strip()
         if abrir_modal == 'crear':
@@ -61,19 +59,69 @@ def cliente_list(request):
 def cliente_create(request):
     if request.method == 'POST':
         form = ClienteForm(request.POST)
+        origen = request.POST.get('origen', '').strip()
+        es_ajax = origen in ('venta', 'modal_listado')
+        confirmar_duplicado = request.POST.get('confirmar_duplicado', '') == '1'
+
         if form.is_valid():
+            duplicado = form.cliente_duplicado() if not confirmar_duplicado else None
+
+            if duplicado and es_ajax:
+                return JsonResponse({
+                    'ok': False,
+                    'duplicado': True,
+                    'mensaje': f'Ya existe un cliente "{duplicado.nombre} ({duplicado.nombre_local})". ¿Confirmás que es otro distinto?',
+                }, status=409)
+
+            if duplicado and not es_ajax:
+                messages.warning(
+                    request,
+                    f'Ya existe un cliente con el mismo nombre y local: '
+                    f'"{duplicado.nombre} ({duplicado.nombre_local})". '
+                    f'Si estás seguro, presioná "Confirmar de todos modos".'
+                )
+                return render(
+                    request,
+                    'facturacion/clientes/cliente_list.html',
+                    _contexto_lista(
+                        request,
+                        form_modal=form,
+                        modal_activo='crear',
+                    ),
+                )
+
+            # Guardar
             cliente = form.save()
-            messages.success(request, f'Cliente "{cliente.nombre}" creado correctamente.')
+
+            if origen == 'venta':
+                return JsonResponse({
+                    'ok': True,
+                    'cliente': {
+                        'id': cliente.id,
+                        'nombre': cliente.nombre,
+                        'nombre_local': cliente.nombre_local or '',
+                        'tipo_pago': cliente.tipo_pago or 'CONTADO',
+                        'nombre_display': str(cliente),
+                    }
+                })
+
+            if origen == 'modal_listado':
+                return JsonResponse({'ok': True, 'cliente_id': cliente.id})
+
+            messages.success(request, f'Cliente "{cliente.nombre}" creado.')
             return redirect('cliente_list')
-        # Con errores: volvemos a renderizar la lista con el modal abierto
+
+        # Form inválido
+        if es_ajax:
+            return JsonResponse({
+                'ok': False,
+                'errors': _form_errors_to_dict(form),
+            }, status=400)
+
         messages.error(request, 'Revisá los errores del formulario.')
-        return render(
-            request,
-            'facturacion/clientes/cliente_list.html',
-            _contexto_lista(request, form_modal=form, modal_activo='crear'),
-        )
-    # GET: abrimos el modal vacío
-    return redirect(f"{reverse('cliente_list')}?abrir_modal=crear")
+    else:
+        form = ClienteForm()
+    return render(request, 'facturacion/clientes/cliente_form.html', {'form': form})
 
 
 @login_required(login_url='login')
@@ -81,20 +129,60 @@ def cliente_update(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
     if request.method == 'POST':
         form = ClienteForm(request.POST, instance=cliente)
+        origen = request.POST.get('origen', '').strip()
+        es_ajax = origen == 'modal_listado'
+        confirmar_duplicado = request.POST.get('confirmar_duplicado', '') == '1'
+
         if form.is_valid():
+            duplicado = form.cliente_duplicado() if not confirmar_duplicado else None
+
+            if duplicado and es_ajax:
+                return JsonResponse({
+                    'ok': False,
+                    'duplicado': True,
+                    'mensaje': f'Ya existe otro cliente "{duplicado.nombre} ({duplicado.nombre_local})". ¿Confirmás que no es un duplicado?',
+                }, status=409)
+
+            if duplicado and not es_ajax:
+                messages.warning(
+                    request,
+                    f'Ya existe un cliente con el mismo nombre y local: '
+                    f'"{duplicado.nombre} ({duplicado.nombre_local})". '
+                    f'Si estás seguro, presioná "Guardar de todos modos".'
+                )
+                return render(
+                    request,
+                    'facturacion/clientes/cliente_list.html',
+                    _contexto_lista(
+                        request,
+                        form_modal=form,
+                        modal_activo='editar',
+                        objeto_editar=cliente,
+                    ),
+                )
+
             cliente = form.save()
+
+            if es_ajax:
+                return JsonResponse({'ok': True, 'cliente_id': cliente.id})
+
             messages.success(request, f'Cliente "{cliente.nombre}" actualizado.')
             return redirect('cliente_list')
-        # Con errores: volvemos a renderizar la lista con el modal abierto
+
+        # Form inválido
+        if es_ajax:
+            return JsonResponse({
+                'ok': False,
+                'errors': _form_errors_to_dict(form),
+            }, status=400)
+
         messages.error(request, 'Revisá los errores del formulario.')
-        return render(
-            request,
-            'facturacion/clientes/cliente_list.html',
-            _contexto_lista(request, form_modal=form, modal_activo='editar',
-                            objeto_editar=cliente),
-        )
-    # GET: abrimos el modal con los datos
-    return redirect(f"{reverse('cliente_list')}?abrir_modal=editar_{pk}")
+    else:
+        form = ClienteForm(instance=cliente)
+    return render(request, 'facturacion/clientes/cliente_form.html', {
+        'form': form,
+        'object': cliente,
+    })
 
 
 @login_required(login_url='login')
@@ -142,3 +230,8 @@ def pagar_deuda(request, cliente_id):
         'form': form,
         'historial_pagos': historial_pagos,
     })
+
+
+def _form_errors_to_dict(form):
+    """Convierte los errores del form a un dict {campo: [mensajes]}."""
+    return {campo: [str(m) for m in errores] for campo, errores in form.errors.items()}

@@ -18,41 +18,66 @@
 
     <input type="hidden" id="cliente-id" name="cliente">
     <input type="hidden" id="monto-pagado-input" name="monto_pagado" value="">
+    <input type="hidden" id="forma-pago-hidden" name="forma_pago" value="EFECTIVO">
 
     <div class="card shadow-sm border-0 p-3 mb-4">
     <div class="row g-3">
       <div class="col-md-4 position-relative">
         <label class="form-label fw-bold"><i class="bi bi-search"></i> Producto</label>
-        <input type="text" id="buscar-prod" class="form-control"
-               data-autocomplete="productos"
-               data-resultados="resultados-prod"
-               placeholder="Buscar producto..." autocomplete="off">
-        <div id="resultados-prod" class="list-group position-absolute w-100 shadow mt-1" style="z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+        <div class="input-group">
+          <input type="text" id="buscar-prod" class="form-control"
+                 data-autocomplete="productos"
+                 data-resultados="resultados-prod"
+                 placeholder="Buscar producto..." autocomplete="off">
+          <button type="button" class="btn btn-warning fw-bold"
+                  id="btn-nuevo-producto-venta"
+                  data-bs-toggle="modal" data-bs-target="#modalNuevoProductoVenta"
+                  title="Crear nuevo producto">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+        </div>
+        <div id="resultados-prod" class="list-group position-absolute w-100 shadow mt-1" style="z-index: 1000; max-height: 320px; overflow-y: auto;"></div>
       </div>
 
       <div class="col-md-4 position-relative">
         <label class="form-label fw-bold">
           <i class="bi bi-person"></i> Cliente <span class="text-muted">(opcional)</span>
         </label>
-        <input type="text" id="buscar-cliente" class="form-control"
-               data-autocomplete="clientes"
-               data-resultados="resultados-cliente"
-               placeholder="Sin cliente → Consumidor Final" autocomplete="off">
+        <div class="input-group">
+          <input type="text" id="buscar-cliente" class="form-control"
+                 data-autocomplete="clientes"
+                 data-resultados="resultados-cliente"
+                 placeholder="Sin cliente → Consumidor Final" autocomplete="off">
+          <button type="button" class="btn btn-warning fw-bold"
+                  id="btn-nuevo-cliente-venta"
+                  data-bs-toggle="modal" data-bs-target="#modalNuevoClienteVenta"
+                  title="Crear nuevo cliente">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+        </div>
         <select id="select-cliente-oculto" style="display:none;">
           {% for cliente in clientes %}
-            <option value="{{ cliente.id }}">{{ cliente.nombre }}{% if cliente.nombre_local %} - {{ cliente.nombre_local }}{% endif %}</option>
+            <option value="{{ cliente.id }}"
+                    data-tipo-pago="{{ cliente.tipo_pago|default:'CONTADO' }}"
+                    data-nombre="{{ cliente.nombre }}"
+                    data-nombre-local="{{ cliente.nombre_local|default:'' }}">
+              {{ cliente.nombre }}{% if cliente.nombre_local %} - {{ cliente.nombre_local }}{% endif %}
+            </option>
           {% endfor %}
         </select>
-        <div id="resultados-cliente" class="list-group position-absolute w-100 shadow mt-1" style="z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+        <div id="resultados-cliente" class="list-group position-absolute w-100 shadow mt-1" style="z-index: 1000; max-height: 320px; overflow-y: auto;"></div>
       </div>
 
       <div class="col-md-4">
         <label class="form-label fw-bold"><i class="bi bi-credit-card"></i> Forma de pago</label>
-        <select id="select-forma-pago" name="forma_pago" class="form-select">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="CREDITO">Crédito</option>
-          <option value="TRANSFERENCIA">Transferencia</option>
+        <select id="select-forma-pago" class="form-select">
+          <option value="EFECTIVO" data-visible-default="true">Efectivo</option>
+          <option value="CREDITO" data-visible-default="true">Crédito</option>
+          <option value="TRANSFERENCIA" data-visible-default="true">Transferencia</option>
         </select>
+        <small class="texto-secundario d-block mt-1" id="forma-pago-aviso" style="display: none;">
+          <i class="bi bi-lock-fill"></i> Cliente de crédito: forma de pago fija.
+        </small>
       </div>
     </div>
     </div>
@@ -106,8 +131,129 @@
 </div>
 
 <!-- ============================================================
-     MODAL: AGREGAR ÍTEM MANUAL
+     MODAL: NUEVO PRODUCTO (desde venta)
      ============================================================ -->
+<div class="modal fade" id="modalNuevoProductoVenta" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content crud-modal">
+      <form id="form-nuevo-producto-venta" method="POST" action="{% url 'producto_create' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="origen" value="venta">
+
+        <div class="modal-header border-0">
+          <h4 class="modal-title">
+            <i class="bi bi-box-seam text-warning"></i> Nuevo Producto
+          </h4>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nombre *</label>
+            <input type="text" name="nombre" class="form-control" required autocomplete="off">
+            <div class="invalid-feedback" data-error="nombre"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Precio (Gs.) *</label>
+            <input type="number" name="precio" class="form-control" min="0" step="any" required autocomplete="off">
+            <div class="invalid-feedback" data-error="precio"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Foto <span class="text-muted">(opcional)</span></label>
+            <input type="file" name="foto" class="form-control" accept="image/*">
+            <div class="invalid-feedback" data-error="foto"></div>
+          </div>
+        </div>
+
+        <div class="modal-footer border-0 d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle"></i> Cancelar
+          </button>
+          <button type="submit" class="btn btn-warning fw-bold">
+            <i class="bi bi-check-circle"></i> Crear y agregar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: NUEVO CLIENTE (desde venta)
+     ============================================================ -->
+<div class="modal fade" id="modalNuevoClienteVenta" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content crud-modal">
+      <form id="form-nuevo-cliente-venta" method="POST" action="{% url 'cliente_create' %}">
+        {% csrf_token %}
+        <input type="hidden" name="origen" value="venta">
+        <input type="hidden" name="confirmar_duplicado" id="venta-cliente-confirmar-duplicado" value="">
+
+        <div class="modal-header border-0">
+          <h4 class="modal-title">
+            <i class="bi bi-person-plus text-warning"></i> Nuevo Cliente
+          </h4>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="venta-cliente-aviso-duplicado" class="alert alert-warning" style="display: none;">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Cliente duplicado.</strong>
+            <span id="venta-cliente-aviso-duplicado-texto"></span>
+            <button type="button" class="btn btn-warning btn-sm fw-bold mt-2 d-block"
+                    id="btn-venta-confirmar-duplicado">
+              <i class="bi bi-check-circle"></i> Sí, crear de todos modos
+            </button>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nombre *</label>
+            <input type="text" name="nombre" class="form-control" required autocomplete="off">
+            <div class="invalid-feedback" data-error="nombre"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Local *</label>
+            <input type="text" name="nombre_local" class="form-control" required
+                   placeholder="Ej: Almacén Don Pedro o Particular" autocomplete="off">
+            <div class="invalid-feedback" data-error="nombre_local"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Preferencia de pago</label>
+            <select name="tipo_pago" class="form-select">
+              <option value="CONTADO">Contado</option>
+              <option value="CREDITO">Crédito</option>
+              <option value="TRANSFERENCIA">Transferencia</option>
+            </select>
+            <div class="invalid-feedback" data-error="tipo_pago"></div>
+          </div>
+          <div class="mb-3" id="bloque-frecuencia-venta" style="display: none;">
+            <label class="form-label fw-bold">Frecuencia de pago</label>
+            <select name="frecuencia_pago" class="form-select">
+              <option value="SEMANAL">Semanal</option>
+              <option value="MENSUAL">Mensual</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Teléfono <span class="text-muted">(opcional)</span></label>
+            <input type="text" name="telefono" class="form-control" autocomplete="off">
+            <div class="invalid-feedback" data-error="telefono"></div>
+          </div>
+        </div>
+
+        <div class="modal-footer border-0 d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle"></i> Cancelar
+          </button>
+          <button type="submit" class="btn btn-warning fw-bold">
+            <i class="bi bi-check-circle"></i> Crear y seleccionar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- MODAL: AGREGAR ÍTEM MANUAL -->
 <div class="modal fade" id="modalItemManual" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content confirmar-venta-modal">
@@ -141,9 +287,7 @@
   </div>
 </div>
 
-<!-- ============================================================
-     MODAL: CONFIRMAR VENTA
-     ============================================================ -->
+<!-- MODAL: CONFIRMAR VENTA -->
 <div class="modal fade" id="modalConfirmarVenta" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content confirmar-venta-modal">
@@ -151,7 +295,7 @@
         <h4 class="modal-title">
           <i class="bi bi-question-circle text-warning"></i> Confirmar venta
         </h4>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar" id="btnCerrarModalConfirmar"></button>
       </div>
       <div class="modal-body">
         <p class="mb-2 fs-5">¿Estás seguro de realizar esta venta?</p>
@@ -173,7 +317,6 @@
           </li>
         </ul>
 
-        <!-- Bloque de efectivo: monto pagado + vuelto (solo si es EFECTIVO) -->
         <div id="bloque-efectivo" style="display: none;" class="mt-3 pt-3 border-top border-secondary">
           <div class="mb-2">
             <label for="input-monto-pagado" class="form-label fw-bold">
@@ -202,7 +345,7 @@
         </div>
       </div>
       <div class="modal-footer border-0 d-flex justify-content-between">
-        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal" id="btnCancelarConfirmar">
           <i class="bi bi-x-circle"></i> Cancelar
         </button>
         <button type="button" class="btn btn-success fw-bold" id="btnConfirmarVenta">
@@ -213,9 +356,7 @@
   </div>
 </div>
 
-<!-- ============================================================
-     MODAL: ÉXITO
-     ============================================================ -->
+<!-- MODAL: ÉXITO -->
 <div class="modal fade" id="modalVentaExitosa" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
   <div class="modal-dialog modal-dialog-centered modal-sm-exito">
     <div class="modal-content confirmar-venta-modal modal-exito-venta">
@@ -245,7 +386,6 @@
           </div>
         </div>
 
-        <!-- Bloque de vuelto (si aplica) -->
         <div id="exito-vuelto" class="exito-total-chico mb-3" style="display: none;">
           <div class="d-flex justify-content-between mb-1 small">
             <span class="texto-secundario">Pagó con:</span>
@@ -281,9 +421,7 @@
   </div>
 </div>
 
-<!-- ============================================================
-     MODAL: CONFIRMAR VACIAR CARRITO
-     ============================================================ -->
+<!-- MODAL: VACIAR CARRITO -->
 <div class="modal fade" id="modalVaciarCarrito" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content confirmar-venta-modal">
@@ -313,7 +451,7 @@
 </div>
 
 {% load static %}
-<script src="{% static 'facturacion/js/venta_form.js' %}"></script>
+<script src="{% static 'facturacion/js/venta_form.js' %}?v=4"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     [100, 300, 700].forEach(function (ms) {

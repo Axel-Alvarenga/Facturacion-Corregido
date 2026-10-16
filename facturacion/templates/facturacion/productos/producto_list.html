@@ -80,6 +80,7 @@
     <div class="modal-content crud-modal">
       <form id="form-producto-modal" method="POST" enctype="multipart/form-data">
         {% csrf_token %}
+        <input type="hidden" name="origen" value="modal_listado">
 
         <div class="modal-header border-0">
           <h4 class="modal-title" id="modalProductoTitulo">
@@ -90,6 +91,11 @@
         </div>
 
         <div class="modal-body">
+          <div id="producto-aviso-error" class="alert alert-danger" style="display: none;">
+            <i class="bi bi-x-circle-fill"></i>
+            <span id="producto-aviso-error-texto"></span>
+          </div>
+
           <div class="mb-3">
             <label for="id_nombre" class="form-label fw-bold">Nombre *</label>
             <input type="text" name="nombre" id="id_nombre"
@@ -174,10 +180,9 @@
   </div>
 </div>
 
-<!-- Datos que la vista pasa al template si hay que reabrir el modal con errores -->
 <script id="datos-modal-producto" type="application/json">
 {
-  "modal_activo": {{ modal_activo|default:"null"|safe }},
+  "modal_activo": {% if modal_activo %}"{{ modal_activo|escapejs }}"{% else %}null{% endif %},
   "objeto_id": {% if objeto_editar %}{{ objeto_editar.pk }}{% else %}null{% endif %},
   "valores": {
     "nombre": "{{ form_modal.nombre.value|default:''|escapejs }}",
@@ -187,14 +192,39 @@
 </script>
 
 {% load static %}
-<script src="{% static 'facturacion/js/producto_modal.js' %}"></script>
+<script src="{% static 'facturacion/js/producto_modal.js' %}?v=3"></script>
 
 <script>
-// Modal de eliminación (independiente del de CRUD)
+// Modal de eliminación
 document.getElementById('modalEliminarProducto').addEventListener('show.bs.modal', function (event) {
     const boton = event.relatedTarget;
     document.getElementById('modalEliminarProductoNombre').textContent = boton.getAttribute('data-nombre');
     document.getElementById('formEliminarProducto').action = boton.getAttribute('data-url');
+});
+
+// Enter en la página (sin foco en inputs) abre el modal de Nuevo Producto
+document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+
+        if (document.querySelector('.modal.show')) return;
+
+        const el = document.activeElement;
+        const tag = el ? el.tagName : '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+            return;
+        }
+        if (tag === 'BUTTON' || tag === 'A') {
+            return;
+        }
+
+        e.preventDefault();
+        const modalEl = document.getElementById('modalProducto');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    });
 });
 </script>
 {% endblock %}

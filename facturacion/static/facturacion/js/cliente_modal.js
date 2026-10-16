@@ -1,6 +1,7 @@
 /* =========================================================
    Comedor A.R.M. - Modal de Cliente (crear / editar)
-   - La frecuencia de pago solo se muestra si tipo_pago = CREDITO
+   - Detección de duplicado sin cerrar el modal
+   - Manejo robusto de respuestas no-JSON
    ========================================================= */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -17,46 +18,40 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectFrecuenciaPago = document.getElementById('id_frecuencia_pago');
     const bloqueFrecuencia = document.getElementById('bloque-frecuencia-pago');
     const inputTelefono = document.getElementById('id_telefono');
+    const confirmarDuplicadoInput = document.getElementById('cliente-confirmar-duplicado');
 
-    // Leer los datos que Django puso en el JSON del HTML
+    const avisoDuplicado = document.getElementById('cliente-aviso-duplicado');
+    const avisoDuplicadoTexto = document.getElementById('cliente-aviso-duplicado-texto');
+    const btnConfirmarDuplicado = document.getElementById('btn-confirmar-duplicado');
+
     const datosModalRaw = document.getElementById('datos-modal-cliente');
     const datosModal = datosModalRaw ? JSON.parse(datosModalRaw.textContent || '{}') : {};
 
     const urlsBase = {
         crear: "/clientes/nuevo/",
-        editar: "/clientes/" // se completa con el id
+        editar: "/clientes/"
     };
 
-    // ============================================================
-    // Mostrar/ocultar la frecuencia de pago según la preferencia
-    // ============================================================
+    let enviando = false;
+
     function actualizarVisibilidadFrecuencia() {
-        const esCredito = selectTipoPago.value === 'CREDITO';
-        if (esCredito) {
+        if (selectTipoPago && selectTipoPago.value === 'CREDITO') {
             bloqueFrecuencia.style.display = 'block';
-            // Si el select no tiene valor o está vacío, dejamos el primero (Semanal)
-            if (!selectFrecuenciaPago.value) {
-                selectFrecuenciaPago.value = 'SEMANAL';
-            }
         } else {
             bloqueFrecuencia.style.display = 'none';
-            // Si no es crédito, forzamos frecuencia CONTADO
-            // (el modelo acepta CONTADO; no se muestra en el select pero se envía)
-            // Dejamos el select como está para no romper la validación del form
         }
     }
 
-    // Escuchar cambios en el select de tipo_pago
     if (selectTipoPago) {
         selectTipoPago.addEventListener('change', actualizarVisibilidadFrecuencia);
     }
 
-    // ============================================================
-    // Al abrir el modal
-    // ============================================================
     modalEl.addEventListener('show.bs.modal', function (event) {
         const boton = event.relatedTarget;
         const modo = boton ? boton.dataset.modo : (datosModal.modal_activo || 'crear');
+
+        if (avisoDuplicado) avisoDuplicado.style.display = 'none';
+        if (confirmarDuplicadoInput) confirmarDuplicadoInput.value = '';
 
         if (modo === 'editar') {
             const id = boton ? boton.dataset.id : datosModal.objeto_id;
@@ -72,13 +67,11 @@ document.addEventListener('DOMContentLoaded', function () {
             inputNombreLocal.value = nombreLocal || '';
             inputTelefono.value = telefono || '';
 
-            // tipo_pago
             const tipoPagoFinal = (tipoPago || 'CONTADO').toUpperCase();
             for (let opt of selectTipoPago.options) {
                 opt.selected = (opt.value === tipoPagoFinal);
             }
 
-            // frecuencia_pago (solo si es crédito)
             const frecuenciaPagoFinal = (frecuenciaPago || 'SEMANAL').toUpperCase();
             for (let opt of selectFrecuenciaPago.options) {
                 opt.selected = (opt.value === frecuenciaPagoFinal);
@@ -93,40 +86,98 @@ document.addEventListener('DOMContentLoaded', function () {
             inputNombreLocal.value = '';
             inputTelefono.value = '';
             selectTipoPago.value = 'CONTADO';
-            selectFrecuenciaPago.value = 'SEMANAL'; // valor por defecto si algún día se activa
+            selectFrecuenciaPago.value = 'SEMANAL';
         }
 
-        // Después de cargar los valores, actualizar la visibilidad
         actualizarVisibilidadFrecuencia();
     });
 
-    // Foco en el primer input al abrir el modal
     modalEl.addEventListener('shown.bs.modal', function () {
         inputNombre.focus();
     });
 
-    // ============================================================
-    // Validación y ajuste antes de enviar
-    // ============================================================
+    // ============================================
+    // Envío por AJAX (con manejo de duplicado)
+    // ============================================
+    function enviarFormulario() {
+        if (enviando) return;
+        enviando = true;
+
+        const formData = new FormData(form);
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: formData,
+            credentials: 'same-origin',
+        })
+        .then(async (res) => {
+            const texto = await res.text();
+            let data = null;
+            try {
+                data = JSON.parse(texto);
+            } catch (err) {
+                console.error('Respuesta no JSON del servidor:', texto.substring(0, 500));
+                throw new Error('El servidor devolvió una respuesta inesperada.');
+            }
+            return { status: res.status, data };
+        })
+        .then(({ status, data }) => {
+            enviando = false;
+
+            if (status === 200 && data.ok) {
+                // Éxito: recargar la lista
+                window.location.reload();
+            } else if (status === 409 && data.duplicado) {
+                // Duplicado: mostrar aviso SIN cerrar el modal
+                avisoDuplicadoTexto.textContent = ' ' + data.mensaje;
+                avisoDuplicado.style.display = 'block';
+                avisoDuplicado.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else if (data.errors) {
+                // Errores del form: mostrar sin cerrar
+                let mensajes = [];
+                Object.keys(data.errors).forEach(function (campo) {
+                    mensajes.push(data.errors[campo].join(' '));
+                });
+                alert(mensajes.join('\n'));
+            } else {
+                alert('Error: ' + (data.error || 'No se pudo guardar.'));
+            }
+        })
+        .catch((err) => {
+            enviando = false;
+            console.error(err);
+            alert('Error: ' + err.message);
+        });
+    }
+
     form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
         if (!inputNombre.value.trim()) {
-            e.preventDefault();
             alert('Ingresá un nombre.');
             inputNombre.focus();
             return;
         }
+        if (!inputNombreLocal.value.trim()) {
+            alert('Ingresá el local (podés poner "Particular" si no tiene).');
+            inputNombreLocal.focus();
+            return;
+        }
 
-        // Si NO es crédito, forzamos frecuencia_pago = CONTADO para no ensuciar
-        if (selectTipoPago.value !== 'CREDITO') {
-            selectFrecuenciaPago.value = 'CONTADO';
-        }
-        // Si ES crédito y por algún motivo no hay valor, forzamos SEMANAL
-        else if (!selectFrecuenciaPago.value) {
-            selectFrecuenciaPago.value = 'SEMANAL';
-        }
+        enviarFormulario();
     });
 
-    // Abrir el modal automáticamente si la vista lo pidió (por errores)
+    // Botón "Sí, crear de todos modos" → envía con confirmar_duplicado=1, SIN cerrar el modal
+    if (btnConfirmarDuplicado) {
+        btnConfirmarDuplicado.addEventListener('click', function () {
+            if (confirmarDuplicadoInput) confirmarDuplicadoInput.value = '1';
+            enviarFormulario();
+        });
+    }
+
     if (datosModal.modal_activo === 'crear' || datosModal.modal_activo === 'editar') {
         setTimeout(function () {
             const m = bootstrap.Modal.getOrCreateInstance(modalEl);

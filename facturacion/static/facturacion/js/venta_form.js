@@ -12,17 +12,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const cuerpoTabla = document.getElementById('cuerpo-tabla');
     const formVenta = document.getElementById('form-venta');
 
-    // Modal de confirmación
     const modalEl = document.getElementById('modalConfirmarVenta');
     const modalInstance = modalEl ? new bootstrap.Modal(modalEl) : null;
     const btnConfirmar = document.getElementById('btnConfirmarVenta');
     const btnConfirmarTexto = document.getElementById('btnConfirmarTexto');
 
-    // Modal de éxito
     const modalExitoEl = document.getElementById('modalVentaExitosa');
     const modalExitoInstance = modalExitoEl ? new bootstrap.Modal(modalExitoEl) : null;
 
-    // Modal de ítem manual
     const modalManualEl = document.getElementById('modalItemManual');
     const modalManualInstance = modalManualEl ? new bootstrap.Modal(modalManualEl) : null;
     const btnAbrirManual = document.getElementById('btnAgregarManual');
@@ -30,21 +27,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const inputManualDesc = document.getElementById('manual-descripcion');
     const inputManualPrecio = document.getElementById('manual-precio');
 
-    // Modal de vaciar carrito
     const modalVaciarEl = document.getElementById('modalVaciarCarrito');
     const modalVaciarInstance = modalVaciarEl ? new bootstrap.Modal(modalVaciarEl) : null;
     const btnConfirmarVaciar = document.getElementById('btnConfirmarVaciar');
 
-    // Select de forma de pago
     const selectFormaPago = document.getElementById('select-forma-pago');
-
-    // Banner de aviso
+    const formaPagoHidden = document.getElementById('forma-pago-hidden');
+    const formaPagoAviso = document.getElementById('forma-pago-aviso');
     const avisoCredito = document.getElementById('aviso-credito');
-
-    // Botón VENDER
     const btnVender = document.getElementById('btn-vender');
 
-    // Bloque de efectivo en el modal de confirmación
     const bloqueEfectivo = document.getElementById('bloque-efectivo');
     const inputMontoPagado = document.getElementById('input-monto-pagado');
     const vueltoMonto = document.getElementById('vuelto-monto');
@@ -52,7 +44,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const vueltoPanel = document.getElementById('vuelto-panel');
     const montoPagadoHidden = document.getElementById('monto-pagado-input');
 
+    const btnCancelarConfirmar = document.getElementById('btnCancelarConfirmar');
+    const btnCerrarModalConfirmar = document.getElementById('btnCerrarModalConfirmar');
+
+    // Modales de creación rápida
+    const modalNuevoProdEl = document.getElementById('modalNuevoProductoVenta');
+    const modalNuevoProdInstance = modalNuevoProdEl ? new bootstrap.Modal(modalNuevoProdEl) : null;
+    const formNuevoProd = document.getElementById('form-nuevo-producto-venta');
+
+    const modalNuevoCliEl = document.getElementById('modalNuevoClienteVenta');
+    const modalNuevoCliInstance = modalNuevoCliEl ? new bootstrap.Modal(modalNuevoCliEl) : null;
+    const formNuevoCli = document.getElementById('form-nuevo-cliente-venta');
+
     let totalActual = 0;
+    let formaPagoBloqueada = false;
 
     // ============================================
     // Foco inicial
@@ -60,18 +65,103 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(function () { inputProd.focus(); }, 300);
 
     // ============================================
-    // Buscador de cliente en vivo
+    // Datos de clientes
     // ============================================
     const clientesData = [];
     for (let option of selectOculto.options) {
-        clientesData.push({ id: option.value, nombre: option.text });
+        clientesData.push({
+            id: option.value,
+            nombre: option.text,
+            tipo_pago: (option.dataset.tipoPago || 'CONTADO').toUpperCase(),
+            nombreReal: option.dataset.nombre || '',
+        });
     }
 
+    function recargarClientesData() {
+        clientesData.length = 0;
+        for (let option of selectOculto.options) {
+            clientesData.push({
+                id: option.value,
+                nombre: option.text,
+                tipo_pago: (option.dataset.tipoPago || 'CONTADO').toUpperCase(),
+                nombreReal: option.dataset.nombre || '',
+            });
+        }
+    }
+
+    // ============================================
+    // Sincronizar forma_pago_hidden
+    // ============================================
+    function sincronizarFormaPago() {
+        if (formaPagoHidden && selectFormaPago) {
+            formaPagoHidden.value = selectFormaPago.value;
+        }
+    }
+    sincronizarFormaPago();
+
+    // ============================================
+    // Reglas de forma de pago según cliente
+    // ============================================
+    function aplicarReglasFormaPago(clienteId) {
+        if (!selectFormaPago) return;
+
+        Array.from(selectFormaPago.options).forEach(function (opt) {
+            opt.disabled = false;
+            opt.hidden = false;
+        });
+        selectFormaPago.disabled = false;
+        formaPagoBloqueada = false;
+        if (formaPagoAviso) formaPagoAviso.style.display = 'none';
+
+        let esCredito = false;
+        let esConsumidorFinal = false;
+        let clienteEncontrado = null;
+
+        if (clienteId) {
+            clienteEncontrado = clientesData.find(c => String(c.id) === String(clienteId));
+        }
+
+        if (clienteEncontrado) {
+            esCredito = clienteEncontrado.tipo_pago === 'CREDITO';
+            esConsumidorFinal = clienteEncontrado.nombreReal.trim().toLowerCase() === 'consumidor final';
+        } else {
+            esConsumidorFinal = true;
+        }
+
+        if (esCredito) {
+            selectFormaPago.value = 'CREDITO';
+            selectFormaPago.disabled = true;
+            formaPagoBloqueada = true;
+            if (formaPagoAviso) formaPagoAviso.style.display = 'block';
+        } else if (esConsumidorFinal) {
+            Array.from(selectFormaPago.options).forEach(function (opt) {
+                if (opt.value === 'CREDITO') {
+                    opt.disabled = true;
+                    opt.hidden = true;
+                }
+            });
+            if (selectFormaPago.value === 'CREDITO') {
+                selectFormaPago.value = 'EFECTIVO';
+            }
+        }
+
+        sincronizarFormaPago();
+    }
+
+    if (selectFormaPago) {
+        selectFormaPago.addEventListener('change', sincronizarFormaPago);
+    }
+
+    // ============================================
+    // Buscador de cliente
+    // ============================================
     inputCliente.addEventListener('input', function () {
         const q = this.value.toLowerCase().trim();
         resCliente.innerHTML = '';
         clienteIdInput.value = '';
         ocultarAvisoCredito();
+        aplicarReglasFormaPago(null);
+
         if (q.length === 0) return;
 
         const filtrados = clientesData.filter(c => c.nombre.toLowerCase().includes(q));
@@ -87,6 +177,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 clienteIdInput.value = c.id;
                 resCliente.innerHTML = '';
                 ocultarAvisoCredito();
+                aplicarReglasFormaPago(c.id);
             };
             resCliente.appendChild(item);
         });
@@ -122,9 +213,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
-    // ============================================
     // Enter en buscador de productos
-    // ============================================
     inputProd.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter') return;
 
@@ -380,11 +469,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (inputCliente) inputCliente.classList.remove('input-error');
     }
 
-    function esConsumidorFinal() {
-        const nombre = inputCliente.value.trim().toLowerCase();
-        return nombre === 'consumidor final';
-    }
-
     // ============================================
     // Cálculo del vuelto
     // ============================================
@@ -395,7 +479,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const vuelto = montoPagado - totalActual;
 
         if (vuelto < 0) {
-            // Falta plata
             vueltoMonto.textContent = 'Gs. 0';
             vueltoMonto.className = 'fs-4 fw-bold text-danger';
             vueltoPanel.classList.add('border', 'border-danger');
@@ -411,7 +494,6 @@ document.addEventListener('DOMContentLoaded', function () {
             btnConfirmar.classList.remove('disabled');
         }
 
-        // Guardar en el hidden para el POST
         if (montoPagadoHidden) {
             montoPagadoHidden.value = montoPagado > 0 ? montoPagado : '';
         }
@@ -437,11 +519,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const formaPago = selectFormaPago ? selectFormaPago.value : 'EFECTIVO';
-        const tieneClienteReal = inputCliente.value.trim() !== '' &&
-                                 clienteIdInput.value !== '' &&
-                                 !esConsumidorFinal();
 
-        if (formaPago === 'CREDITO' && !tieneClienteReal) {
+        if (formaPago === 'CREDITO' && !clienteIdInput.value) {
             mostrarAvisoCredito();
             return;
         }
@@ -456,10 +535,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('confirmar-cliente').textContent = clienteTexto;
         document.getElementById('confirmar-total').textContent = totalTexto;
 
-        // Mostrar/ocultar bloque de efectivo
         if (formaPago === 'EFECTIVO') {
             bloqueEfectivo.style.display = 'block';
-            // Inicializar con el total
             inputMontoPagado.value = totalActual;
             actualizarVuelto();
         } else {
@@ -467,15 +544,39 @@ document.addEventListener('DOMContentLoaded', function () {
             if (montoPagadoHidden) montoPagadoHidden.value = '';
         }
 
+        sincronizarFormaPago();
         modalInstance.show();
     });
 
-    // ============================================
-    // El botón VENDER dispara el submit
-    // ============================================
     if (btnVender) {
         btnVender.addEventListener('click', function () {
             formVenta.requestSubmit();
+        });
+    }
+
+    // ============================================
+    // Cancelar modal → foco al buscador de productos
+    // ============================================
+    function volverAlBuscadorProductos() {
+        if (montoPagadoHidden) montoPagadoHidden.value = '';
+        setTimeout(function () {
+            inputProd.focus();
+        }, 300);
+    }
+
+    if (btnCancelarConfirmar) {
+        btnCancelarConfirmar.addEventListener('click', volverAlBuscadorProductos);
+    }
+    if (btnCerrarModalConfirmar) {
+        btnCerrarModalConfirmar.addEventListener('click', volverAlBuscadorProductos);
+    }
+    if (modalEl) {
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            if (!btnConfirmar.disabled || btnConfirmarTexto.textContent === 'Sí, vender') {
+                setTimeout(function () {
+                    inputProd.focus();
+                }, 100);
+            }
         });
     }
 
@@ -540,13 +641,11 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('exito-fecha').textContent = venta.fecha;
         document.getElementById('btn-imprimir-ticket').href = venta.ticket_url;
 
-        // Aviso de transferencia pendiente
         const avisoPendiente = document.getElementById('exito-aviso-pendiente');
         if (avisoPendiente) {
             avisoPendiente.style.display = venta.es_pendiente ? 'block' : 'none';
         }
 
-        // Bloque de vuelto
         const exitoVuelto = document.getElementById('exito-vuelto');
         if (exitoVuelto) {
             if (venta.tiene_vuelto) {
@@ -560,13 +659,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Limpiar formulario
         cuerpoTabla.innerHTML = '';
         inputCliente.value = '';
         clienteIdInput.value = '';
         inputProd.value = '';
-        selectFormaPago.value = 'EFECTIVO';
         if (montoPagadoHidden) montoPagadoHidden.value = '';
+        aplicarReglasFormaPago(null);
         recalcularTotal();
 
         restaurarBotonConfirmar();
@@ -576,9 +674,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 250);
     }
 
-    // ============================================
-    // Botón "Nueva venta" del modal de éxito
-    // ============================================
     const btnNuevaVentaModal = document.getElementById('btn-nueva-venta-modal');
     if (btnNuevaVentaModal) {
         btnNuevaVentaModal.addEventListener('click', function () {
@@ -601,7 +696,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         modalEl.addEventListener('shown.bs.modal', function () {
-            // Si es efectivo, hacer foco en el input del monto pagado
             const formaPago = selectFormaPago ? selectFormaPago.value : 'EFECTIVO';
             if (formaPago === 'EFECTIVO' && inputMontoPagado) {
                 inputMontoPagado.focus();
@@ -618,4 +712,165 @@ document.addEventListener('DOMContentLoaded', function () {
             if (btnNueva) btnNueva.focus();
         });
     }
+
+    // ============================================
+    // CREAR NUEVO PRODUCTO DESDE VENTA
+    // ============================================
+    if (formNuevoProd) {
+        formNuevoProd.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // Limpiar errores previos
+            formNuevoProd.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            formNuevoProd.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+
+            const formData = new FormData(formNuevoProd);
+
+            fetch(formNuevoProd.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData,
+                credentials: 'same-origin',
+            })
+            .then(async (res) => {
+                const data = await res.json();
+                return { ok: res.ok, data };
+            })
+            .then(({ ok, data }) => {
+                if (ok && data.ok) {
+                    // Agregar el producto al carrito
+                    agregarOActualizarFila(data.producto);
+                    // Cerrar modal
+                    modalNuevoProdInstance.hide();
+                    formNuevoProd.reset();
+                    // Foco al buscador de productos
+                    setTimeout(function () { inputProd.focus(); }, 300);
+                } else if (data.errors) {
+                    // Mostrar errores en el modal
+                    Object.keys(data.errors).forEach(function (campo) {
+                        const input = formNuevoProd.querySelector(`[name="${campo}"]`);
+                        const feedback = formNuevoProd.querySelector(`[data-error="${campo}"]`);
+                        if (input) input.classList.add('is-invalid');
+                        if (feedback) feedback.textContent = data.errors[campo].join(' ');
+                    });
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo crear el producto.'));
+                }
+            })
+            .catch((err) => {
+                console.error(err);
+                alert('Error de conexión.');
+            });
+        });
+    }
+
+        // ============================================
+    // CREAR NUEVO CLIENTE DESDE VENTA
+    // ============================================
+    if (formNuevoCli) {
+        const selectTipoPagoNuevo = formNuevoCli.querySelector('[name="tipo_pago"]');
+        const bloqueFrecuenciaNuevo = document.getElementById('bloque-frecuencia-venta');
+        const avisoDuplicado = document.getElementById('venta-cliente-aviso-duplicado');
+        const avisoDuplicadoTexto = document.getElementById('venta-cliente-aviso-duplicado-texto');
+        const btnConfirmarDuplicado = document.getElementById('btn-venta-confirmar-duplicado');
+        const confirmarDuplicadoInput = document.getElementById('venta-cliente-confirmar-duplicado');
+
+        function actualizarVisibilidadFrecuenciaVenta() {
+            if (!selectTipoPagoNuevo || !bloqueFrecuenciaNuevo) return;
+            if (selectTipoPagoNuevo.value === 'CREDITO') {
+                bloqueFrecuenciaNuevo.style.display = 'block';
+            } else {
+                bloqueFrecuenciaNuevo.style.display = 'none';
+            }
+        }
+        if (selectTipoPagoNuevo) {
+            selectTipoPagoNuevo.addEventListener('change', actualizarVisibilidadFrecuenciaVenta);
+        }
+
+        // Al abrir el modal, resetear el aviso
+        modalNuevoCliEl.addEventListener('show.bs.modal', function () {
+            if (avisoDuplicado) avisoDuplicado.style.display = 'none';
+            if (confirmarDuplicadoInput) confirmarDuplicadoInput.value = '';
+        });
+
+        formNuevoCli.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            formNuevoCli.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            formNuevoCli.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+
+            const formData = new FormData(formNuevoCli);
+
+            fetch(formNuevoCli.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData,
+                credentials: 'same-origin',
+            })
+            .then(async (res) => {
+                const data = await res.json();
+                return { status: res.status, data };
+            })
+            .then(({ status, data }) => {
+                if (status === 200 && data.ok) {
+                    // Éxito: agregar y seleccionar
+                    const cliente = data.cliente;
+                    const nuevaOpcion = document.createElement('option');
+                    nuevaOpcion.value = cliente.id;
+                    nuevaOpcion.dataset.tipoPago = cliente.tipo_pago;
+                    nuevaOpcion.dataset.nombre = cliente.nombre;
+                    nuevaOpcion.dataset.nombreLocal = cliente.nombre_local || '';
+                    nuevaOpcion.textContent = cliente.nombre_display;
+                    selectOculto.appendChild(nuevaOpcion);
+
+                    recargarClientesData();
+
+                    inputCliente.value = cliente.nombre_display;
+                    clienteIdInput.value = cliente.id;
+                    aplicarReglasFormaPago(cliente.id);
+
+                    modalNuevoCliInstance.hide();
+                    formNuevoCli.reset();
+                    if (bloqueFrecuenciaNuevo) bloqueFrecuenciaNuevo.style.display = 'none';
+
+                    setTimeout(function () { inputProd.focus(); }, 300);
+                } else if (status === 409 && data.duplicado) {
+                    // Mostrar aviso de duplicado
+                    avisoDuplicadoTexto.textContent = ' ' + data.mensaje;
+                    avisoDuplicado.style.display = 'block';
+                } else if (data.errors) {
+                    Object.keys(data.errors).forEach(function (campo) {
+                        const input = formNuevoCli.querySelector(`[name="${campo}"]`);
+                        const feedback = formNuevoCli.querySelector(`[data-error="${campo}"]`);
+                        if (input) input.classList.add('is-invalid');
+                        if (feedback) feedback.textContent = data.errors[campo].join(' ');
+                    });
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo crear el cliente.'));
+                }
+            })
+            .catch((err) => {
+                console.error(err);
+                alert('Error de conexión.');
+            });
+        });
+
+        // Botón "Sí, crear de todos modos"
+        if (btnConfirmarDuplicado) {
+            btnConfirmarDuplicado.addEventListener('click', function () {
+                if (confirmarDuplicadoInput) confirmarDuplicadoInput.value = '1';
+                // Enviar el form como AJAX también para consistencia
+                formNuevoCli.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            });
+        }
+    }
+
+    // ============================================
+    // Aplicar reglas al cargar
+    // ============================================
+    aplicarReglasFormaPago(null);
 });

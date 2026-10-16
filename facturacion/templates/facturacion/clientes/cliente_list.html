@@ -134,6 +134,8 @@
     <div class="modal-content crud-modal">
       <form id="form-cliente-modal" method="POST">
         {% csrf_token %}
+        <input type="hidden" name="origen" value="modal_listado">
+        <input type="hidden" name="confirmar_duplicado" id="cliente-confirmar-duplicado" value="">
 
         <div class="modal-header border-0">
           <h4 class="modal-title" id="modalClienteTitulo">
@@ -144,6 +146,16 @@
         </div>
 
         <div class="modal-body">
+          <div id="cliente-aviso-duplicado" class="alert alert-warning" style="display: none;">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Cliente duplicado.</strong>
+            <span id="cliente-aviso-duplicado-texto"></span>
+            <button type="button" class="btn btn-warning btn-sm fw-bold mt-2 d-block"
+                    id="btn-confirmar-duplicado">
+              <i class="bi bi-check-circle"></i> Sí, crear de todos modos
+            </button>
+          </div>
+
           <div class="mb-3">
             <label for="id_nombre_cliente" class="form-label fw-bold">Nombre *</label>
             <input type="text" name="nombre" id="id_nombre_cliente"
@@ -157,12 +169,12 @@
 
           <div class="mb-3">
             <label for="id_nombre_local" class="form-label fw-bold">
-              Nombre del local <span class="text-muted">(opcional)</span>
+              Local *
             </label>
             <input type="text" name="nombre_local" id="id_nombre_local"
                    class="form-control {% if form_modal.nombre_local.errors %}is-invalid{% endif %}"
-                   placeholder="Ej: Almacén Don Pedro"
-                   autocomplete="off">
+                   placeholder="Ej: Almacén Don Pedro o Particular"
+                   autocomplete="off" required>
             {% if form_modal.nombre_local.errors %}
               <div class="invalid-feedback d-block">{{ form_modal.nombre_local.errors.0 }}</div>
             {% endif %}
@@ -187,7 +199,6 @@
             {% endif %}
           </div>
 
-          <!-- Bloque de frecuencia: solo visible si tipo_pago = CREDITO -->
           <div class="mb-3" id="bloque-frecuencia-pago" style="display: none;">
             <label for="id_frecuencia_pago" class="form-label fw-bold">
               <i class="bi bi-calendar-week text-warning"></i>
@@ -265,7 +276,6 @@
   </div>
 </div>
 
-<!-- Datos que la vista pasa al template si hay que reabrir el modal con errores -->
 <script id="datos-modal-cliente" type="application/json">
 {
   "modal_activo": {{ modal_activo|default:"null"|safe }},
@@ -281,14 +291,43 @@
 </script>
 
 {% load static %}
-<script src="{% static 'facturacion/js/cliente_modal.js' %}"></script>
+<script src="{% static 'facturacion/js/cliente_modal.js' %}?v=4"></script>
 
 <script>
-// Modal de eliminación (independiente del de CRUD)
+// Modal de eliminación
 document.getElementById('modalEliminarCliente').addEventListener('show.bs.modal', function (event) {
     const boton = event.relatedTarget;
     document.getElementById('modalEliminarClienteNombre').textContent = boton.getAttribute('data-nombre');
     document.getElementById('formEliminarCliente').action = boton.getAttribute('data-url');
+});
+
+// Enter en la página (sin foco en inputs) abre el modal de Nuevo Cliente
+document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+
+        // Si ya hay un modal abierto, ignorar
+        if (document.querySelector('.modal.show')) return;
+
+        // Si el foco está en un input/textarea/select, ignorar
+        const el = document.activeElement;
+        const tag = el ? el.tagName : '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+            return;
+        }
+        // Si el foco está en un botón o link, dejar que el navegador lo active normalmente
+        if (tag === 'BUTTON' || tag === 'A') {
+            return;
+        }
+
+        // Caso válido: nadie con foco → abrir el modal
+        e.preventDefault();
+        const modalEl = document.getElementById('modalCliente');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    });
 });
 </script>
 {% endblock %}

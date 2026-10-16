@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.db.models.deletion import ProtectedError
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -54,18 +55,43 @@ def producto_list(request):
 def producto_create(request):
     if request.method == 'POST':
         form = ProductoForm(request.POST, request.FILES)
+        origen = request.POST.get('origen', '').strip()
+        es_ajax = origen in ('venta', 'modal_listado')
+
         if form.is_valid():
             producto = form.save()
+
+            if origen == 'venta':
+                return JsonResponse({
+                    'ok': True,
+                    'producto': {
+                        'id': producto.id,
+                        'nombre': producto.nombre,
+                        'precio': float(producto.precio),
+                        'foto_url': producto.foto.url if producto.foto else '',
+                    }
+                })
+
+            if origen == 'modal_listado':
+                return JsonResponse({'ok': True, 'producto_id': producto.id})
+
             messages.success(request, f'Producto "{producto.nombre}" creado correctamente.')
             return redirect('producto_list')
-        # Con errores: volvemos a renderizar la lista con el modal abierto
+
+        # Form inválido
+        if es_ajax:
+            return JsonResponse({
+                'ok': False,
+                'errors': _form_errors_to_dict(form),
+            }, status=400)
+
         messages.error(request, 'Revisá los errores del formulario.')
         return render(
             request,
             'facturacion/productos/producto_list.html',
             _contexto_lista(request, form_modal=form, modal_activo='crear'),
         )
-    # GET: abrimos el modal vacío
+
     return redirect(f"{reverse('producto_list')}?abrir_modal=crear")
 
 
@@ -74,11 +100,25 @@ def producto_update(request, pk):
     producto = get_object_or_404(Producto, pk=pk)
     if request.method == 'POST':
         form = ProductoForm(request.POST, request.FILES, instance=producto)
+        origen = request.POST.get('origen', '').strip()
+        es_ajax = origen == 'modal_listado'
+
         if form.is_valid():
             producto = form.save()
+
+            if es_ajax:
+                return JsonResponse({'ok': True, 'producto_id': producto.id})
+
             messages.success(request, f'Producto "{producto.nombre}" actualizado.')
             return redirect('producto_list')
-        # Con errores: volvemos a renderizar la lista con el modal abierto
+
+        # Form inválido
+        if es_ajax:
+            return JsonResponse({
+                'ok': False,
+                'errors': _form_errors_to_dict(form),
+            }, status=400)
+
         messages.error(request, 'Revisá los errores del formulario.')
         return render(
             request,
@@ -86,7 +126,7 @@ def producto_update(request, pk):
             _contexto_lista(request, form_modal=form, modal_activo='editar',
                             objeto_editar=producto),
         )
-    # GET: abrimos el modal con los datos
+
     return redirect(f"{reverse('producto_list')}?abrir_modal=editar_{pk}")
 
 
@@ -105,3 +145,8 @@ def producto_delete(request, pk):
             )
             return redirect('producto_list')
     return redirect('producto_list')
+
+
+def _form_errors_to_dict(form):
+    """Convierte los errores del form a un dict {campo: [mensajes]}."""
+    return {campo: [str(m) for m in errores] for campo, errores in form.errors.items()}

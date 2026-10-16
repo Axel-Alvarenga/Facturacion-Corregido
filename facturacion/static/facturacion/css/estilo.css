@@ -757,3 +757,14 @@ label, .form-label { color: var(--color-texto); }
     color: var(--color-texto);
     user-select: none;
 }
+/* =========================================================
+   Aviso de forma de pago bloqueada
+   ========================================================= */
+#forma-pago-aviso {
+    color: var(--color-acento);
+    font-size: 0.85rem;
+}
+
+#forma-pago-aviso i {
+    margin-right: 0.2rem;
+}
