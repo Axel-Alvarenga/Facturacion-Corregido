@@ -2,9 +2,6 @@
 
 {% block content %}
 
-<!-- ============================================================
-     TABS DE INFORMES
-     ============================================================ -->
 <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
         <a class="nav-link {% if pestaña_activa == 'deudas' %}active{% endif %}"
@@ -20,9 +17,6 @@
     </li>
 </ul>
 
-<!-- ============================================================
-     ENCABEZADO
-     ============================================================ -->
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
         <h2 class="mb-0"><i class="bi bi-graph-up"></i> Ventas del período</h2>
@@ -41,14 +35,25 @@
     </div>
 </div>
 
-<!-- Filtros rápidos por fecha -->
+{% if transferencias_pendientes_count %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <div class="flex-grow-1">
+        Hay <strong>{{ transferencias_pendientes_count }}</strong>
+        transferencia{{ transferencias_pendientes_count|pluralize }} pendiente{{ transferencias_pendientes_count|pluralize }} de confirmar.
+    </div>
+    <a href="?estado=PENDIENTE" class="btn btn-sm btn-warning fw-bold">
+        Ver pendientes
+    </a>
+</div>
+{% endif %}
+
 <div class="btn-group mb-3 flex-wrap no-print" role="group">
     <a href="?fecha_desde={{ hoy }}&fecha_hasta={{ hoy }}" class="btn btn-outline-secondary btn-sm">Hoy</a>
     <a href="?fecha_desde={{ primer_dia_mes }}&fecha_hasta={{ hoy }}" class="btn btn-outline-secondary btn-sm">Este mes</a>
-    <a href="{% url 'informes_ventas' %}" class="btn btn-outline-secondary btn-sm">Todo el historial</a>
+    <a href="{% url 'informes_ventas' %}" class="btn btn-outline-secondary btn-sm">Todo</a>
 </div>
 
-<!-- Formulario de filtros -->
 <form method="GET" class="card p-3 mb-4 shadow-sm border-0 no-print">
   <div class="row g-3">
     <div class="col-12 col-md-6 col-lg-3">
@@ -56,7 +61,7 @@
       <input type="text" name="cliente" class="form-control"
              value="{{ cliente_query }}" placeholder="Nombre del cliente...">
     </div>
-    <div class="col-12 col-md-6 col-lg-3">
+    <div class="col-12 col-md-6 col-lg-2">
       <label class="form-label fw-bold">Forma de pago</label>
       <select name="forma_pago" class="form-select">
         <option value="">Todas</option>
@@ -65,11 +70,19 @@
         <option value="TRANSFERENCIA" {% if forma_pago_query == "TRANSFERENCIA" %}selected{% endif %}>Transferencia</option>
       </select>
     </div>
-    <div class="col-12 col-md-6 col-lg-3">
+    <div class="col-12 col-md-6 col-lg-2">
+      <label class="form-label fw-bold">Estado</label>
+      <select name="estado" class="form-select">
+        <option value="">Todos</option>
+        <option value="CONFIRMADA" {% if estado_query == "CONFIRMADA" %}selected{% endif %}>Confirmada</option>
+        <option value="PENDIENTE" {% if estado_query == "PENDIENTE" %}selected{% endif %}>Pendiente</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
       <label class="form-label fw-bold">Desde</label>
       <input type="date" name="fecha_desde" class="form-control" value="{{ fecha_desde_query }}">
     </div>
-    <div class="col-12 col-md-6 col-lg-3">
+    <div class="col-6 col-md-3 col-lg-2">
       <label class="form-label fw-bold">Hasta</label>
       <input type="date" name="fecha_hasta" class="form-control" value="{{ fecha_hasta_query }}">
     </div>
@@ -84,7 +97,6 @@
   </div>
 </form>
 
-<!-- KPIs -->
 <div class="row g-3 mb-3">
     <div class="col-md-4">
         <div class="card card-kpi p-3">
@@ -121,7 +133,6 @@
     </div>
 </div>
 
-<!-- Resumen por forma de pago -->
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="card card-kpi p-3 text-center">
@@ -143,7 +154,6 @@
     </div>
 </div>
 
-<!-- Tabla de ventas -->
 <div class="tabla-local">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -151,25 +161,61 @@
                 <tr>
                     <th># Venta</th>
                     <th>Cliente</th>
-                    <th>Local</th>
                     <th>Fecha</th>
                     <th>Forma de Pago</th>
+                    <th class="text-center">Estado</th>
                     <th class="text-end">Total</th>
+                    <th class="text-center no-print">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 {% for venta in ventas %}
-                <tr>
+                <tr class="{% if venta.estado == 'PENDIENTE' %}fila-pendiente{% endif %}">
                     <td>{{ venta.id }}</td>
-                    <td>{{ venta.cliente.nombre }}</td>
-                    <td>{{ venta.cliente.nombre_local|default:"-" }}</td>
+                    <td>
+                        {{ venta.cliente.nombre }}
+                        {% if venta.cliente.nombre_local %}
+                            <span class="nombre-local">({{ venta.cliente.nombre_local }})</span>
+                        {% endif %}
+                    </td>
                     <td>{{ venta.fecha|date:"d/m/Y H:i" }}</td>
                     <td>{{ venta.get_forma_pago_display }}</td>
+                    <td class="text-center">
+                        {% if venta.estado == 'PENDIENTE' %}
+                            <span class="badge badge-deudor">
+                                <i class="bi bi-hourglass-split"></i> PENDIENTE
+                            </span>
+                        {% else %}
+                            <span class="badge badge-al-dia">
+                                <i class="bi bi-check-circle"></i> Confirmada
+                            </span>
+                        {% endif %}
+                    </td>
                     <td class="text-end fw-bold">Gs. {{ venta.total|floatformat:2 }}</td>
+                    <td class="text-center no-print">
+                        {% if venta.estado == 'PENDIENTE' %}
+                            <form method="POST"
+                                  action="{% url 'confirmar_transferencia' venta.id %}"
+                                  class="d-inline form-confirmar-transferencia"
+                                  data-venta-id="{{ venta.id }}"
+                                  data-cliente="{{ venta.cliente.nombre }}{% if venta.cliente.nombre_local %} ({{ venta.cliente.nombre_local }}){% endif %}"
+                                  data-total="Gs. {{ venta.total|floatformat:0 }}"
+                                  data-fecha="{{ venta.fecha|date:'d/m/Y H:i' }}">
+                                {% csrf_token %}
+                                <button type="button"
+                                        class="btn btn-success btn-sm fw-bold btn-abrir-modal-confirmar"
+                                        title="Marcar transferencia como recibida">
+                                    <i class="bi bi-check-circle"></i> Recibida
+                                </button>
+                            </form>
+                        {% else %}
+                            <span class="texto-secundario small">-</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center py-4">
+                    <td colspan="7" class="text-center py-4">
                         No se encontraron ventas con los filtros aplicados.
                     </td>
                 </tr>
@@ -178,4 +224,116 @@
         </table>
     </div>
 </div>
+
+<!-- ============================================================
+     MODAL: CONFIRMAR TRANSFERENCIA RECIBIDA
+     ============================================================ -->
+<div class="modal fade" id="modalConfirmarTransferencia" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content confirmar-venta-modal">
+      <div class="modal-header border-0">
+        <h4 class="modal-title">
+          <i class="bi bi-question-circle text-success"></i> Confirmar transferencia
+        </h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3 fs-5">¿Ya recibiste esta transferencia?</p>
+
+        <ul class="list-unstyled mb-0">
+          <li class="mb-2">
+            <i class="bi bi-receipt text-warning"></i>
+            <strong>Venta:</strong>
+            <span id="confirmar-venta-id">#0</span>
+          </li>
+          <li class="mb-2">
+            <i class="bi bi-person text-warning"></i>
+            <strong>Cliente:</strong>
+            <span id="confirmar-venta-cliente">-</span>
+          </li>
+          <li class="mb-2">
+            <i class="bi bi-calendar text-warning"></i>
+            <strong>Fecha:</strong>
+            <span id="confirmar-venta-fecha">-</span>
+          </li>
+          <li>
+            <i class="bi bi-cash-stack text-warning"></i>
+            <strong>Total:</strong>
+            <span id="confirmar-venta-total" class="text-success fw-bold">Gs. 0</span>
+          </li>
+        </ul>
+
+        <div class="alert alert-info small mt-3 mb-0">
+          <i class="bi bi-info-circle"></i>
+          Al confirmarla, la venta pasa a estado <strong>Confirmada</strong> y se cuenta en los informes.
+        </div>
+      </div>
+      <div class="modal-footer border-0 d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> Cancelar
+        </button>
+        <button type="button" class="btn btn-success fw-bold" id="btnConfirmarTransferencia">
+          <i class="bi bi-check-circle"></i> Sí, recibí la transferencia
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('modalConfirmarTransferencia');
+    if (!modalEl) return;
+
+    const modal = new bootstrap.Modal(modalEl);
+    const btnConfirmar = document.getElementById('btnConfirmarTransferencia');
+
+    const elVentaId = document.getElementById('confirmar-venta-id');
+    const elCliente = document.getElementById('confirmar-venta-cliente');
+    const elFecha = document.getElementById('confirmar-venta-fecha');
+    const elTotal = document.getElementById('confirmar-venta-total');
+
+    let formPendiente = null;
+
+    // Botones "Recibida" → abren el modal con los datos
+    document.querySelectorAll('.btn-abrir-modal-confirmar').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const form = btn.closest('.form-confirmar-transferencia');
+            const id = form.dataset.ventaId;
+            const cliente = form.dataset.cliente;
+            const total = form.dataset.total;
+            const fecha = form.dataset.fecha;
+
+            elVentaId.textContent = '#' + id;
+            elCliente.textContent = cliente;
+            elTotal.textContent = total;
+            elFecha.textContent = fecha;
+
+            formPendiente = form;
+            modal.show();
+        });
+    });
+
+    // Botón "Sí, recibí la transferencia" → envía el form
+    btnConfirmar.addEventListener('click', function () {
+        if (formPendiente) {
+            formPendiente.submit();
+        }
+    });
+
+    // Foco automático en el botón de confirmar al abrir el modal
+    modalEl.addEventListener('shown.bs.modal', function () {
+        btnConfirmar.focus();
+    });
+
+    // Enter = confirmar (más rápido)
+    modalEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            btnConfirmar.click();
+        }
+    });
+});
+</script>
+
 {% endblock %}

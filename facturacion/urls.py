@@ -21,6 +21,7 @@ urlpatterns = [
     path('ventas/nueva/', views.crear_venta, name='crear_venta'),
     path('ventas/<int:venta_id>/confirmada/', views.venta_confirmada, name='venta_confirmada'),
     path('ventas/<int:venta_id>/ticket/', views.ticket_venta, name='ticket_venta'),
+    path('ventas/<int:venta_id>/confirmar-transferencia/', views.confirmar_transferencia, name='confirmar_transferencia'),
 
     path('pedidos/', views.pedido_list, name='pedido_list'),
     path('pedidos/nuevo/', views.pedido_create, name='pedido_create'),
@@ -28,14 +29,12 @@ urlpatterns = [
 
     path('api/buscar-productos/', views.buscar_productos, name='buscar_productos'),
 
-    # Informes (2 pestañas + PDF + Excel)
     path('informes/', views.informes_deudas, name='informes'),
     path('informes/deudas/', views.informes_deudas, name='informes_deudas'),
     path('informes/deudas/pdf/', views.informes_deudas_pdf, name='informes_deudas_pdf'),
     path('informes/ventas/', views.informes_ventas, name='informes_ventas'),
     path('informes/exportar-excel/', views.informes_export_excel, name='informes_export_excel'),
 
-    # Auditoría
     path('auditoria/', views.auditoria_list, name='auditoria_list'),
     path('auditoria/exportar-excel/', views.auditoria_export_excel, name='auditoria_export_excel'),
     path('auditoria/<int:pk>/', views.auditoria_detalle, name='auditoria_detalle'),

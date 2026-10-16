@@ -57,6 +57,12 @@
             padding-top: 8px;
             border-top: 2px solid #000;
         }
+        .vuelto-row {
+            font-size: 13px;
+            font-weight: bold;
+            margin-top: 4px;
+            padding-top: 4px;
+        }
 
         .footer {
             margin-top: 20px;
@@ -65,7 +71,6 @@
         }
         .footer strong { font-size: 12px; }
 
-        .no-print { }
         .boton-imprimir {
             display: block;
             width: 100%;
@@ -90,7 +95,6 @@
 </head>
 <body>
 
-    <!-- ENCABEZADO -->
     <div class="text-center">
         <h1>COMEDOR A.R.M.</h1>
         <p class="subtitulo">Gastronomía y Sabor</p>
@@ -99,28 +103,16 @@
 
     <div class="line"></div>
 
-    <!-- DATOS DE LA VENTA -->
-    <p style="margin: 3px 0;">
-        <strong>Ticket #:</strong> {{ venta.id }}
-    </p>
-    <p style="margin: 3px 0;">
-        <strong>Fecha:</strong> {{ venta.fecha|date:"d/m/Y H:i" }}
-    </p>
-    <p style="margin: 3px 0;">
-        <strong>Cliente:</strong> {{ venta.cliente.nombre }}
-    </p>
+    <p style="margin: 3px 0;"><strong>Ticket #:</strong> {{ venta.id }}</p>
+    <p style="margin: 3px 0;"><strong>Fecha:</strong> {{ venta.fecha|date:"d/m/Y H:i" }}</p>
+    <p style="margin: 3px 0;"><strong>Cliente:</strong> {{ venta.cliente.nombre }}</p>
     {% if venta.cliente.nombre_local %}
-    <p style="margin: 3px 0;">
-        <strong>Local:</strong> {{ venta.cliente.nombre_local }}
-    </p>
+    <p style="margin: 3px 0;"><strong>Local:</strong> {{ venta.cliente.nombre_local }}</p>
     {% endif %}
-    <p style="margin: 3px 0;">
-        <strong>Pago:</strong> {{ venta.get_forma_pago_display|upper }}
-    </p>
+    <p style="margin: 3px 0;"><strong>Pago:</strong> {{ venta.get_forma_pago_display|upper }}</p>
 
     <div class="line"></div>
 
-    <!-- DETALLES -->
     <table>
         <thead>
             <tr>
@@ -139,9 +131,7 @@
             {% endfor %}
             {% for item in venta.items_manuales.all %}
             <tr>
-                <td class="desc">
-                    <em>{{ item.descripcion }}</em>
-                </td>
+                <td class="desc"><em>{{ item.descripcion }}</em></td>
                 <td class="cant">1</td>
                 <td class="precio">Gs. {{ item.precio|floatformat:0 }}</td>
             </tr>
@@ -151,29 +141,33 @@
 
     <div class="double-line"></div>
 
-    <!-- TOTAL -->
     <div style="display: flex; justify-content: space-between;" class="total-row">
         <span>TOTAL:</span>
         <span>Gs. {{ venta.total|floatformat:0 }}</span>
     </div>
 
+    {% if venta.monto_pagado is not None and venta.vuelto is not None %}
+    <div style="display: flex; justify-content: space-between;" class="vuelto-row">
+        <span>PAGÓ CON:</span>
+        <span>Gs. {{ venta.monto_pagado|floatformat:0 }}</span>
+    </div>
+    <div style="display: flex; justify-content: space-between;" class="vuelto-row">
+        <span>VUELTO:</span>
+        <span>Gs. {{ venta.vuelto|floatformat:0 }}</span>
+    </div>
+    {% endif %}
+
     <div class="line"></div>
 
-    <!-- PIE -->
     <div class="footer">
         <p style="margin: 5px 0;">¡Gracias por su compra!</p>
         <p style="margin: 5px 0;"><strong>COMEDOR A.R.M.</strong></p>
         <p style="margin: 5px 0;">Documento no válido como factura legal</p>
     </div>
 
-    <!-- BOTÓN IMPRIMIR (no sale en el papel) -->
     <button class="boton-imprimir no-print" onclick="window.print()">
         🖨️ Imprimir ticket
     </button>
 
-    <script>
-        // Auto-print opcional: descomentar si querés que se imprima solo
-        // setTimeout(function () { window.print(); }, 500);
-    </script>
 </body>
 </html>

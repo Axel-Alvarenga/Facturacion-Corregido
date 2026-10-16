@@ -79,17 +79,15 @@ def informes_deudas_pdf(request):
         (c.deuda for c in clientes_lista), Decimal('0.00')
     )
 
-    # --- Response con header de descarga ---
     response = HttpResponse(content_type='application/pdf')
     fecha_archivo = timezone.localdate().strftime('%Y-%m-%d')
     response['Content-Disposition'] = (
         f'attachment; filename="deudas_clientes_{fecha_archivo}.pdf"'
     )
 
-    # --- Doc: Oficio (legal) vertical, márgenes ajustados ---
     doc = SimpleDocTemplate(
         response,
-        pagesize=legal,          # Oficio: 216 x 356 mm
+        pagesize=legal,
         leftMargin=10 * mm,
         rightMargin=10 * mm,
         topMargin=10 * mm,
@@ -98,90 +96,52 @@ def informes_deudas_pdf(request):
         author='Comedor A.R.M.',
     )
 
-    # --- Colores (todo en B/N) ---
     color_negro = colors.black
     color_gris_texto = colors.HexColor('#333333')
-    color_gris_fondo = colors.HexColor('#E8E8E8')   # fondo de encabezados
-    color_gris_suave = colors.HexColor('#F5F5F5')   # filas alternas
+    color_gris_fondo = colors.HexColor('#E8E8E8')
+    color_gris_suave = colors.HexColor('#F5F5F5')
     color_borde = colors.black
 
-    # --- Estilos ---
     estilos = getSampleStyleSheet()
 
     estilo_titulo = ParagraphStyle(
-        'Titulo',
-        parent=estilos['Heading1'],
-        fontSize=14,
-        textColor=color_negro,
-        spaceAfter=2,
-        alignment=TA_LEFT,
+        'Titulo', parent=estilos['Heading1'], fontSize=14,
+        textColor=color_negro, spaceAfter=2, alignment=TA_LEFT,
         fontName='Helvetica-Bold',
     )
     estilo_subtitulo = ParagraphStyle(
-        'Subtitulo',
-        parent=estilos['Normal'],
-        fontSize=8,
-        textColor=color_gris_texto,
-        alignment=TA_LEFT,
-        spaceAfter=8,
+        'Subtitulo', parent=estilos['Normal'], fontSize=8,
+        textColor=color_gris_texto, alignment=TA_LEFT, spaceAfter=8,
     )
     estilo_celda = ParagraphStyle(
-        'Celda',
-        parent=estilos['Normal'],
-        fontSize=8,
-        textColor=color_negro,
-        leading=10,
+        'Celda', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, leading=10,
     )
     estilo_celda_centro = ParagraphStyle(
-        'CeldaCentro',
-        parent=estilos['Normal'],
-        fontSize=8,
-        textColor=color_negro,
-        alignment=TA_CENTER,
-        leading=10,
+        'CeldaCentro', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, alignment=TA_CENTER, leading=10,
     )
     estilo_celda_right = ParagraphStyle(
-        'CeldaRight',
-        parent=estilos['Normal'],
-        fontSize=8,
-        textColor=color_negro,
-        alignment=TA_RIGHT,
-        leading=10,
+        'CeldaRight', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, alignment=TA_RIGHT, leading=10,
     )
     estilo_celda_bold = ParagraphStyle(
-        'CeldaBold',
-        parent=estilos['Normal'],
-        fontSize=8,
-        textColor=color_negro,
-        fontName='Helvetica-Bold',
-        leading=10,
+        'CeldaBold', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, fontName='Helvetica-Bold', leading=10,
     )
     estilo_celda_bold_right = ParagraphStyle(
-        'CeldaBoldRight',
-        parent=estilos['Normal'],
-        fontSize=8,
-        textColor=color_negro,
-        fontName='Helvetica-Bold',
-        alignment=TA_RIGHT,
-        leading=10,
+        'CeldaBoldRight', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, fontName='Helvetica-Bold',
+        alignment=TA_RIGHT, leading=10,
     )
     estilo_celda_bold_centro = ParagraphStyle(
-        'CeldaBoldCentro',
-        parent=estilos['Normal'],
-        fontSize=8,
-        textColor=color_negro,
-        fontName='Helvetica-Bold',
-        alignment=TA_CENTER,
-        leading=10,
+        'CeldaBoldCentro', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, fontName='Helvetica-Bold',
+        alignment=TA_CENTER, leading=10,
     )
 
-    # --- Contenido ---
     elementos = []
-
-    # Título
     elementos.append(Paragraph('Comedor A.R.M.', estilo_titulo))
-
-    # Subtítulo con fecha
     fecha_hoy = timezone.localtime()
     elementos.append(Paragraph(
         f'Informe de deudas por cliente — '
@@ -189,8 +149,6 @@ def informes_deudas_pdf(request):
         estilo_subtitulo
     ))
 
-    # --- Tabla principal ---
-    # Columnas: Nombre | Frecuencia | Deuda Total | Desayuno | Almuerzo | Total | Estado
     data = [[
         Paragraph('<b>Nombre</b>', estilo_celda_bold),
         Paragraph('<b>Frecuencia</b>', estilo_celda_bold_centro),
@@ -216,13 +174,12 @@ def informes_deudas_pdf(request):
             Paragraph(nombre_con_local, estilo_celda),
             Paragraph(frecuencia, estilo_celda_centro),
             Paragraph(deuda_texto, estilo_celda_right),
-            Paragraph('', estilo_celda_centro),  # Desayuno (manual)
-            Paragraph('', estilo_celda_centro),  # Almuerzo (manual)
-            Paragraph('', estilo_celda_centro),  # Total (manual)
-            Paragraph('', estilo_celda_centro),  # Estado (manual)
+            Paragraph('', estilo_celda_centro),
+            Paragraph('', estilo_celda_centro),
+            Paragraph('', estilo_celda_centro),
+            Paragraph('', estilo_celda_centro),
         ])
 
-    # Fila final de TOTAL GENERAL (solo en la columna Deuda Total)
     total_texto = f'{total_deuda_filtrada:,.0f}'.replace(',', '.')
     data.append([
         Paragraph('<b>TOTAL GENERAL</b>', estilo_celda_bold),
@@ -234,41 +191,25 @@ def informes_deudas_pdf(request):
         Paragraph('', estilo_celda),
     ])
 
-    # --- Anchos de columnas ---
-    # Oficio vertical: 216 mm de ancho. Con márgenes de 10 mm quedan 196 mm útiles.
-    # Nombre: 62mm | Frecuencia: 20mm | Deuda Total: 26mm
-    # Desayuno: 22mm | Almuerzo: 22mm | Total: 22mm | Estado: 22mm
-    # Total = 62 + 20 + 26 + 22 + 22 + 22 + 22 = 196 mm ✅
     col_widths = [
-        62 * mm,
-        20 * mm,
-        26 * mm,
-        22 * mm,
-        22 * mm,
-        22 * mm,
-        22 * mm,
+        62 * mm, 20 * mm, 26 * mm, 22 * mm, 22 * mm, 22 * mm, 22 * mm,
     ]
 
     tabla = Table(data, colWidths=col_widths, repeatRows=1)
 
-    # --- Estilos de la tabla (blanco y negro) ---
     estilos_tabla = [
-        # Encabezado: fondo gris claro, texto negro
         ('BACKGROUND', (0, 0), (-1, 0), color_gris_fondo),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),  # espacio para escribir a mano
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
         ('LEFTPADDING', (0, 0), (-1, -1), 5),
         ('RIGHTPADDING', (0, 0), (-1, -1), 5),
-        # Bordes negros finos
         ('BOX', (0, 0), (-1, -1), 0.8, color_borde),
         ('INNERGRID', (0, 0), (-1, -1), 0.4, color_borde),
-        # Fila de TOTAL: fondo gris claro + línea gruesa arriba
         ('BACKGROUND', (0, -1), (-1, -1), color_gris_fondo),
         ('LINEABOVE', (0, -1), (-1, -1), 1.2, color_borde),
     ]
 
-    # Filas alternas (solo en las columnas con datos: Nombre, Frecuencia, Deuda)
     for i in range(1, len(clientes_lista) + 1):
         if i % 2 == 0:
             estilos_tabla.append(
@@ -279,21 +220,15 @@ def informes_deudas_pdf(request):
     elementos.append(tabla)
 
     elementos.append(Spacer(1, 6))
-
-    # --- Nota al pie ---
     elementos.append(Paragraph(
         f'Total de registros: {total_clientes_filtrados}. '
         f'Las columnas Desayuno, Almuerzo, Total y Estado se completan a mano.',
         ParagraphStyle(
-            'Pie',
-            parent=estilos['Normal'],
-            fontSize=7,
-            textColor=color_gris_texto,
-            alignment=TA_CENTER,
+            'Pie', parent=estilos['Normal'], fontSize=7,
+            textColor=color_gris_texto, alignment=TA_CENTER,
         )
     ))
 
-    # --- Build ---
     doc.build(elementos)
     return response
 
@@ -308,6 +243,7 @@ def _ventas_filtradas(request):
 
     cliente_query = request.GET.get('cliente', '').strip()
     forma_pago_query = request.GET.get('forma_pago', '').strip()
+    estado_query = request.GET.get('estado', '').strip()
     fecha_desde_query = request.GET.get('fecha_desde', '').strip()
     fecha_hasta_query = request.GET.get('fecha_hasta', '').strip()
 
@@ -315,6 +251,8 @@ def _ventas_filtradas(request):
         ventas = ventas.filter(cliente__nombre__icontains=cliente_query)
     if forma_pago_query:
         ventas = ventas.filter(forma_pago__iexact=forma_pago_query)
+    if estado_query:
+        ventas = ventas.filter(estado=estado_query)
     if fecha_desde_query:
         ventas = ventas.filter(fecha__date__gte=fecha_desde_query)
     if fecha_hasta_query:
@@ -323,6 +261,7 @@ def _ventas_filtradas(request):
     filtros = {
         'cliente_query': cliente_query,
         'forma_pago_query': forma_pago_query,
+        'estado_query': estado_query,
         'fecha_desde_query': fecha_desde_query,
         'fecha_hasta_query': fecha_hasta_query,
     }
@@ -346,6 +285,10 @@ def informes_ventas(request):
     for fila in ventas.values('forma_pago').annotate(total=Sum('total')):
         resumen_forma_pago[fila['forma_pago']] = fila['total'] or Decimal('0.00')
 
+    transferencias_pendientes_count = Venta.objects.filter(
+        forma_pago='TRANSFERENCIA', estado='PENDIENTE'
+    ).count()
+
     hoy = timezone.localdate()
 
     context = {
@@ -355,6 +298,7 @@ def informes_ventas(request):
         'cantidad_filtrada': cantidad_filtrada,
         'ticket_promedio': ticket_promedio,
         'resumen_forma_pago': resumen_forma_pago,
+        'transferencias_pendientes_count': transferencias_pendientes_count,
         'hoy': hoy.isoformat(),
         'primer_dia_mes': hoy.replace(day=1).isoformat(),
         **filtros,
@@ -378,7 +322,7 @@ def informes_export_excel(request):
     ws = wb.active
     ws.title = 'Informe de ventas'
 
-    encabezados = ['# Venta', 'Cliente', 'Local', 'Fecha', 'Forma de pago', 'Total (Gs.)']
+    encabezados = ['# Venta', 'Cliente', 'Local', 'Fecha', 'Forma de pago', 'Estado', 'Total (Gs.)']
     ws.append(encabezados)
 
     relleno_encabezado = PatternFill(start_color='16232C', end_color='16232C', fill_type='solid')
@@ -398,15 +342,16 @@ def informes_export_excel(request):
             v.cliente.nombre_local or '-',
             v.fecha.strftime('%d/%m/%Y %H:%M'),
             v.get_forma_pago_display(),
+            v.get_estado_display(),
             float(v.total),
         ])
 
     if fila > 1:
         fila_total = fila + 1
-        ws.cell(row=fila_total, column=5, value='TOTAL').font = Font(bold=True)
-        ws.cell(row=fila_total, column=6, value=f'=SUM(F2:F{fila})').font = Font(bold=True)
+        ws.cell(row=fila_total, column=6, value='TOTAL').font = Font(bold=True)
+        ws.cell(row=fila_total, column=7, value=f'=SUM(G2:G{fila})').font = Font(bold=True)
 
-    anchos = [10, 25, 18, 18, 16, 16]
+    anchos = [10, 25, 18, 18, 16, 16, 16]
     for i, ancho in enumerate(anchos, start=1):
         ws.column_dimensions[get_column_letter(i)].width = ancho
 

@@ -17,7 +17,6 @@
             <i class="bi bi-egg-fried"></i> Comedor A.R.M.
         </a>
 
-        <!-- Botón hamburguesa (aparece antes gracias a navbar-expand-xl) -->
         <button class="navbar-toggler" type="button"
                 data-bs-toggle="collapse"
                 data-bs-target="#navbarContenido"
@@ -27,7 +26,6 @@
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        <!-- Contenido colapsable -->
         <div class="collapse navbar-collapse" id="navbarContenido">
             <ul class="navbar-nav me-auto mb-2 mb-xl-0">
                 <li class="nav-item">
@@ -61,6 +59,11 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'informes' %}">
                         <i class="bi bi-graph-up"></i> Informes
+                        {% if transferencias_pendientes_nav %}
+                            <span class="badge bg-danger" title="Transferencias pendientes de confirmar">
+                                {{ transferencias_pendientes_nav }}
+                            </span>
+                        {% endif %}
                     </a>
                 </li>
                 {% if user.is_superuser %}
@@ -88,9 +91,7 @@
     {% block content %}{% endblock %}
 </div>
 
-<!-- ============================================================
-     CONTENEDOR DE TOASTS (mensajes)
-     ============================================================ -->
+<!-- Toasts -->
 <div class="toast-container position-fixed top-0 end-0 p-3" id="toast-container" style="z-index: 1080;">
     {% if messages %}
         {% for message in messages %}
@@ -123,9 +124,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- ============================================================
-     AUTO-MOSTRAR TOASTS AL CARGAR
-     ============================================================ -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const toasts = document.querySelectorAll('#toast-container .toast');

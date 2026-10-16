@@ -4,6 +4,7 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.utils import timezone
 from ..models import Cliente, Producto, Venta, DetalleVenta, ItemVentaManual
 
 
@@ -29,6 +30,8 @@ def crear_venta(request):
 
         manual_descripciones = request.POST.getlist('manual_descripcion[]')
         manual_precios = request.POST.getlist('manual_precio[]')
+
+        monto_pagado_str = request.POST.get('monto_pagado', '').strip()
 
         formas_validas = dict(Venta._meta.get_field('forma_pago').choices)
 
@@ -74,10 +77,32 @@ def crear_venta(request):
                         total_real += precio
                         manuales.append((desc, precio))
 
+                    # Calcular monto_pagado y vuelto (solo efectivo)
+                    monto_pagado = None
+                    vuelto = None
+                    if forma_pago == 'EFECTIVO':
+                        try:
+                            monto_pagado = Decimal(monto_pagado_str) if monto_pagado_str else total_real
+                        except (InvalidOperation, TypeError):
+                            monto_pagado = total_real
+                        if monto_pagado < 0:
+                            monto_pagado = total_real
+                        if monto_pagado < total_real:
+                            # El JS ya bloquea esto, pero por si acaso
+                            error = 'El monto pagado no puede ser menor al total.'
+                            raise ValueError('Monto pagado menor al total')
+                        vuelto = monto_pagado - total_real
+
+                    # Transferencia → PENDIENTE hasta confirmar recepción.
+                    estado_venta = 'PENDIENTE' if forma_pago == 'TRANSFERENCIA' else 'CONFIRMADA'
+
                     venta = Venta.objects.create(
                         cliente=cliente,
                         forma_pago=forma_pago,
                         total=total_real,
+                        monto_pagado=monto_pagado,
+                        vuelto=vuelto,
+                        estado=estado_venta,
                     )
 
                     for producto, cantidad, precio in detalles:
@@ -99,13 +124,10 @@ def crear_venta(request):
                         cliente.deuda += total_real
                         cliente.save(update_fields=['deuda'])
             except (ValueError, Producto.DoesNotExist):
-                error = 'Hubo un problema con los datos de la venta. Verificá e intentá de nuevo.'
+                if not error:
+                    error = 'Hubo un problema con los datos de la venta. Verificá e intentá de nuevo.'
 
-            # Si todo salió bien
             if not error:
-                # NOTA: no se usa messages.success() acá porque el modal de éxito
-                # post-venta ya da el feedback visual. Si se usa el fallback sin
-                # JS (redirigir a venta_confirmada), esa pantalla también avisa.
                 if es_ajax:
                     return JsonResponse({
                         'ok': True,
@@ -117,11 +139,15 @@ def crear_venta(request):
                             'forma_pago': venta.get_forma_pago_display(),
                             'fecha': venta.fecha.strftime('%d/%m/%Y %H:%M'),
                             'ticket_url': f'/ventas/{venta.id}/ticket/',
+                            'estado': venta.estado,
+                            'es_pendiente': venta.estado == 'PENDIENTE',
+                            'monto_pagado_fmt': f'{venta.monto_pagado:,.0f}' if venta.monto_pagado is not None else None,
+                            'vuelto_fmt': f'{venta.vuelto:,.0f}' if venta.vuelto is not None else None,
+                            'tiene_vuelto': venta.tiene_vuelto(),
                         }
                     })
                 return redirect('venta_confirmada', venta_id=venta.id)
 
-    # Si llegamos acá, hay error o es GET
     if es_ajax:
         return JsonResponse({
             'ok': False,
@@ -138,6 +164,33 @@ def crear_venta(request):
         context['error'] = error
         messages.error(request, error)
     return render(request, 'facturacion/ventas/venta_form.html', context)
+
+
+@login_required(login_url='login')
+def confirmar_transferencia(request, venta_id):
+    """Marca una venta por transferencia como recibida (CONFIRMADA)."""
+    venta = get_object_or_404(Venta, pk=venta_id)
+
+    if request.method == 'POST':
+        if venta.forma_pago == 'TRANSFERENCIA' and venta.estado == 'PENDIENTE':
+            venta.estado = 'CONFIRMADA'
+            venta.fecha_confirmacion = timezone.now()
+            venta.confirmado_por = request.user
+            venta.save(update_fields=['estado', 'fecha_confirmacion', 'confirmado_por'])
+            messages.success(
+                request,
+                f'Transferencia de la venta #{venta.id} (Gs. {venta.total:,.0f}) confirmada.'
+            )
+        else:
+            messages.warning(
+                request,
+                f'La venta #{venta.id} no está pendiente de confirmación.'
+            )
+
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return redirect(referer)
+    return redirect('informes_ventas')
 
 
 @login_required(login_url='login')

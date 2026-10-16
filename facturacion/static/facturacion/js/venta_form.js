@@ -1,14 +1,5 @@
 /* =========================================================
    Comedor A.R.M. - Formulario de nueva venta
-   - Buscador AJAX de productos
-   - Buscador de cliente (opcional)
-   - Ítems manuales (recargos, propinas, etc.)
-   - Total animado + contador de ítems
-   - Confirmación modal + envío AJAX (sin recargar)
-   - Modal de éxito post-venta (compacto)
-   - Vaciar carrito con confirmación
-   - Aviso inline de crédito sin cliente
-   - Enter en el buscador vacío → abre modal de confirmación
    ========================================================= */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -47,11 +38,21 @@ document.addEventListener('DOMContentLoaded', function () {
     // Select de forma de pago
     const selectFormaPago = document.getElementById('select-forma-pago');
 
-    // Banner de aviso inline por crédito sin cliente
+    // Banner de aviso
     const avisoCredito = document.getElementById('aviso-credito');
 
     // Botón VENDER
     const btnVender = document.getElementById('btn-vender');
+
+    // Bloque de efectivo en el modal de confirmación
+    const bloqueEfectivo = document.getElementById('bloque-efectivo');
+    const inputMontoPagado = document.getElementById('input-monto-pagado');
+    const vueltoMonto = document.getElementById('vuelto-monto');
+    const vueltoError = document.getElementById('vuelto-error');
+    const vueltoPanel = document.getElementById('vuelto-panel');
+    const montoPagadoHidden = document.getElementById('monto-pagado-input');
+
+    let totalActual = 0;
 
     // ============================================
     // Foco inicial
@@ -59,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(function () { inputProd.focus(); }, 300);
 
     // ============================================
-    // Buscador de cliente en vivo (opcional)
+    // Buscador de cliente en vivo
     // ============================================
     const clientesData = [];
     for (let option of selectOculto.options) {
@@ -122,9 +123,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ============================================
-    // Enter en el buscador de productos:
-    //   - Si hay texto y sugerencias, agrega el primero
-    //   - Si está vacío y hay productos en la tabla, abre modal de confirmación
+    // Enter en buscador de productos
     // ============================================
     inputProd.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter') return;
@@ -133,28 +132,21 @@ document.addEventListener('DOMContentLoaded', function () {
         const items = resProd.querySelectorAll('a');
         const hayProductosEnTabla = cuerpoTabla.children.length > 0;
 
-        // Caso 1: hay texto escrito → dejar que el autocomplete lo maneje
-        // (el autocomplete ya dispara el click del primer resultado)
         if (texto.length > 0) {
-            // Si hay sugerencias, el handler del autocomplete las procesa
-            // (no hacemos nada especial acá).
             if (items.length > 0) return;
-            // Si no hay sugerencias pero hay texto, evitamos que se envíe el form
             e.preventDefault();
             return;
         }
 
-        // Caso 2: el buscador está vacío
         e.preventDefault();
 
         if (hayProductosEnTabla) {
-            // Hay productos cargados: abrir modal de confirmación
             formVenta.requestSubmit();
         }
     });
 
     // ============================================
-    // Agregar producto del catálogo
+    // Agregar producto
     // ============================================
     function agregarOActualizarFila(producto) {
         const filasExistentes = cuerpoTabla.querySelectorAll('tr');
@@ -286,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================
-    // Recálculo del total + contador + animación
+    // Recálculo del total
     // ============================================
     let ultimoTotal = 0;
 
@@ -306,6 +298,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 total += precio * cant;
             }
         });
+
+        totalActual = total;
 
         const totalTexto = 'Gs. ' + total.toLocaleString('es-PY');
         const totalEl = document.getElementById('total-monto');
@@ -356,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================
-    // Aviso inline por crédito sin cliente
+    // Aviso de crédito sin cliente
     // ============================================
     function mostrarAvisoCredito() {
         if (avisoCredito) {
@@ -392,7 +386,46 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================
-    // Submit del form: valida y abre modal de confirmación
+    // Cálculo del vuelto
+    // ============================================
+    function actualizarVuelto() {
+        if (!inputMontoPagado) return;
+
+        const montoPagado = parseFloat(inputMontoPagado.value) || 0;
+        const vuelto = montoPagado - totalActual;
+
+        if (vuelto < 0) {
+            // Falta plata
+            vueltoMonto.textContent = 'Gs. 0';
+            vueltoMonto.className = 'fs-4 fw-bold text-danger';
+            vueltoPanel.classList.add('border', 'border-danger');
+            if (vueltoError) vueltoError.style.display = 'block';
+            if (btnConfirmar) btnConfirmar.disabled = true;
+            btnConfirmar.classList.add('disabled');
+        } else {
+            vueltoMonto.textContent = 'Gs. ' + vuelto.toLocaleString('es-PY');
+            vueltoMonto.className = 'fs-4 fw-bold text-success';
+            vueltoPanel.classList.remove('border', 'border-danger');
+            if (vueltoError) vueltoError.style.display = 'none';
+            if (btnConfirmar) btnConfirmar.disabled = false;
+            btnConfirmar.classList.remove('disabled');
+        }
+
+        // Guardar en el hidden para el POST
+        if (montoPagadoHidden) {
+            montoPagadoHidden.value = montoPagado > 0 ? montoPagado : '';
+        }
+    }
+
+    if (inputMontoPagado) {
+        inputMontoPagado.addEventListener('input', actualizarVuelto);
+        inputMontoPagado.addEventListener('focus', function () {
+            this.select();
+        });
+    }
+
+    // ============================================
+    // Submit
     // ============================================
     formVenta.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -423,11 +456,22 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('confirmar-cliente').textContent = clienteTexto;
         document.getElementById('confirmar-total').textContent = totalTexto;
 
+        // Mostrar/ocultar bloque de efectivo
+        if (formaPago === 'EFECTIVO') {
+            bloqueEfectivo.style.display = 'block';
+            // Inicializar con el total
+            inputMontoPagado.value = totalActual;
+            actualizarVuelto();
+        } else {
+            bloqueEfectivo.style.display = 'none';
+            if (montoPagadoHidden) montoPagadoHidden.value = '';
+        }
+
         modalInstance.show();
     });
 
     // ============================================
-    // El botón VENDER dispara el submit del form
+    // El botón VENDER dispara el submit
     // ============================================
     if (btnVender) {
         btnVender.addEventListener('click', function () {
@@ -436,7 +480,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================
-    // Confirmar venta (AJAX, sin recargar)
+    // Confirmar venta (AJAX)
     // ============================================
     if (btnConfirmar) {
         btnConfirmar.addEventListener('click', function () {
@@ -486,7 +530,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================
-    // Mostrar modal de éxito con datos de la venta
+    // Modal de éxito
     // ============================================
     function mostrarModalExito(venta) {
         document.getElementById('exito-venta-id').textContent = '#' + venta.id;
@@ -496,11 +540,33 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('exito-fecha').textContent = venta.fecha;
         document.getElementById('btn-imprimir-ticket').href = venta.ticket_url;
 
+        // Aviso de transferencia pendiente
+        const avisoPendiente = document.getElementById('exito-aviso-pendiente');
+        if (avisoPendiente) {
+            avisoPendiente.style.display = venta.es_pendiente ? 'block' : 'none';
+        }
+
+        // Bloque de vuelto
+        const exitoVuelto = document.getElementById('exito-vuelto');
+        if (exitoVuelto) {
+            if (venta.tiene_vuelto) {
+                document.getElementById('exito-monto-pagado').textContent =
+                    'Gs. ' + venta.monto_pagado_fmt;
+                document.getElementById('exito-vuelto-monto').textContent =
+                    'Gs. ' + venta.vuelto_fmt;
+                exitoVuelto.style.display = 'block';
+            } else {
+                exitoVuelto.style.display = 'none';
+            }
+        }
+
+        // Limpiar formulario
         cuerpoTabla.innerHTML = '';
         inputCliente.value = '';
         clienteIdInput.value = '';
         inputProd.value = '';
         selectFormaPago.value = 'EFECTIVO';
+        if (montoPagadoHidden) montoPagadoHidden.value = '';
         recalcularTotal();
 
         restaurarBotonConfirmar();
@@ -535,11 +601,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         modalEl.addEventListener('shown.bs.modal', function () {
-            btnConfirmar.focus();
+            // Si es efectivo, hacer foco en el input del monto pagado
+            const formaPago = selectFormaPago ? selectFormaPago.value : 'EFECTIVO';
+            if (formaPago === 'EFECTIVO' && inputMontoPagado) {
+                inputMontoPagado.focus();
+                inputMontoPagado.select();
+            } else {
+                btnConfirmar.focus();
+            }
         });
     }
 
-    // Foco en "Nueva venta" al abrir el modal de éxito
     if (modalExitoEl) {
         modalExitoEl.addEventListener('shown.bs.modal', function () {
             const btnNueva = document.getElementById('btn-nueva-venta-modal');

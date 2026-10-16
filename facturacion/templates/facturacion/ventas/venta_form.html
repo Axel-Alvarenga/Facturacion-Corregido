@@ -11,13 +11,13 @@
   <form id="form-venta" method="POST">
     {% csrf_token %}
 
-    <!-- Banner de aviso (oculto por defecto) -->
     <div id="aviso-credito" class="aviso-credito-inline" style="display: none;">
       <i class="bi bi-exclamation-triangle-fill"></i>
       <span>Para vender <strong>a crédito</strong>, asigná un cliente.</span>
     </div>
 
     <input type="hidden" id="cliente-id" name="cliente">
+    <input type="hidden" id="monto-pagado-input" name="monto_pagado" value="">
 
     <div class="card shadow-sm border-0 p-3 mb-4">
     <div class="row g-3">
@@ -172,6 +172,34 @@
             <span id="confirmar-total" class="text-success fw-bold">Gs. 0</span>
           </li>
         </ul>
+
+        <!-- Bloque de efectivo: monto pagado + vuelto (solo si es EFECTIVO) -->
+        <div id="bloque-efectivo" style="display: none;" class="mt-3 pt-3 border-top border-secondary">
+          <div class="mb-2">
+            <label for="input-monto-pagado" class="form-label fw-bold">
+              <i class="bi bi-cash-coin text-warning"></i>
+              ¿Con cuánto paga?
+            </label>
+            <input type="number"
+                   id="input-monto-pagado"
+                   class="form-control form-control-lg"
+                   placeholder="0"
+                   min="0"
+                   step="any"
+                   inputmode="numeric">
+          </div>
+          <div class="d-flex justify-content-between align-items-center p-2 rounded"
+               id="vuelto-panel">
+            <span class="fw-bold">
+              <i class="bi bi-arrow-return-left"></i> VUELTO:
+            </span>
+            <span id="vuelto-monto" class="fs-4 fw-bold">Gs. 0</span>
+          </div>
+          <div id="vuelto-error" class="text-danger small mt-2" style="display: none;">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            El monto pagado es menor al total.
+          </div>
+        </div>
       </div>
       <div class="modal-footer border-0 d-flex justify-content-between">
         <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
@@ -186,7 +214,7 @@
 </div>
 
 <!-- ============================================================
-     MODAL: ÉXITO (post-venta, sin recarga) - versión compacta
+     MODAL: ÉXITO
      ============================================================ -->
 <div class="modal fade" id="modalVentaExitosa" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
   <div class="modal-dialog modal-dialog-centered modal-sm-exito">
@@ -215,6 +243,24 @@
             <span class="texto-secundario small">Fecha:</span>
             <strong class="small" id="exito-fecha">-</strong>
           </div>
+        </div>
+
+        <!-- Bloque de vuelto (si aplica) -->
+        <div id="exito-vuelto" class="exito-total-chico mb-3" style="display: none;">
+          <div class="d-flex justify-content-between mb-1 small">
+            <span class="texto-secundario">Pagó con:</span>
+            <span id="exito-monto-pagado">-</span>
+          </div>
+          <div class="d-flex justify-content-between fw-bold">
+            <span>VUELTO:</span>
+            <span id="exito-vuelto-monto" class="text-success">-</span>
+          </div>
+        </div>
+
+        <div id="exito-aviso-pendiente" class="alert alert-warning small mb-3" style="display: none;">
+          <i class="bi bi-hourglass-split"></i>
+          <strong>Transferencia pendiente.</strong>
+          Confirmala cuando la recibas desde el informe de ventas.
         </div>
 
         <div class="d-grid gap-2">
@@ -269,7 +315,6 @@
 {% load static %}
 <script src="{% static 'facturacion/js/venta_form.js' %}"></script>
 <script>
-// Refuerzo del foco inicial al buscador de productos
 document.addEventListener('DOMContentLoaded', function() {
     [100, 300, 700].forEach(function (ms) {
         setTimeout(function () {

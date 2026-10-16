@@ -79,9 +79,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-
-                # Procesador propio: cuenta de pedidos pendientes para el badge
                 'facturacion.context_processors.pedidos_pendientes_nav',
+                'facturacion.context_processors.transferencias_pendientes_nav',
             ],
         },
     },
