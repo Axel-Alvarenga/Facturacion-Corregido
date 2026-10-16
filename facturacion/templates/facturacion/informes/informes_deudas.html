@@ -1,0 +1,206 @@
+{% extends 'facturacion/base.html' %}
+
+{% block content %}
+
+<!-- ============================================================
+     TABS DE INFORMES
+     ============================================================ -->
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link {% if pestaña_activa == 'deudas' %}active{% endif %}"
+           href="{% url 'informes_deudas' %}">
+            <i class="bi bi-cash-coin"></i> Deudas por cliente
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if pestaña_activa == 'ventas' %}active{% endif %}"
+           href="{% url 'informes_ventas' %}">
+            <i class="bi bi-graph-up"></i> Ventas del período
+        </a>
+    </li>
+</ul>
+
+<!-- ============================================================
+     ENCABEZADO
+     ============================================================ -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-cash-coin"></i> Deudas por cliente</h2>
+        <p class="texto-secundario small mb-0">
+            Listado de clientes con su saldo deudor actual
+        </p>
+    </div>
+        <a href="{% url 'informes_deudas_pdf' %}?{{ request.GET.urlencode }}"
+       class="btn btn-outline-danger fw-bold" id="btn-descargar-pdf"
+       target="_blank">
+        <i class="bi bi-file-earmark-pdf"></i> Descargar PDF
+    </a>
+</div>
+
+<!-- ============================================================
+     KPIs
+     ============================================================ -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icono"><i class="bi bi-people"></i></div>
+                <div>
+                    <div class="kpi-valor">{{ total_clientes }}</div>
+                    <div class="kpi-label">Clientes registrados</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icono"><i class="bi bi-exclamation-circle"></i></div>
+                <div>
+                    <div class="kpi-valor">{{ clientes_con_deuda }}</div>
+                    <div class="kpi-label">Clientes con deuda</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icono"><i class="bi bi-cash-stack"></i></div>
+                <div>
+                    <div class="kpi-valor">Gs. {{ monto_total_deuda|floatformat:0 }}</div>
+                    <div class="kpi-label">Monto total adeudado</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     FILTROS (auto-aplican, sin botones)
+     ============================================================ -->
+<form method="GET" class="card p-3 mb-4 shadow-sm border-0" id="form-filtros-deudas">
+  <div class="row g-3 align-items-end">
+    <div class="col-12 col-md-7 col-lg-6">
+      <label class="form-label fw-bold">
+        <i class="bi bi-search"></i> Buscar cliente
+      </label>
+      <input type="text" name="buscar" id="input-buscar-deudas" class="form-control"
+             value="{{ buscar }}" placeholder="Nombre, local o teléfono...">
+    </div>
+    <div class="col-12 col-md-5 col-lg-6">
+      <div class="form-check form-switch mt-3">
+        <input class="form-check-input" type="checkbox" id="solo_con_deuda"
+               name="solo_con_deuda" value="1"
+               {% if solo_con_deuda %}checked{% endif %}>
+        <label class="form-check-label fw-bold" for="solo_con_deuda">
+          <i class="bi bi-filter"></i> Solo con deuda
+        </label>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- ============================================================
+     TABLA DE DEUDAS
+     ============================================================ -->
+<div class="tabla-local">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Frecuencia</th>
+                    <th class="text-end">Deuda Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in clientes %}
+                    <tr class="{% if c.deuda > 0 %}fila-con-deuda{% endif %}">
+                        <td>
+                            <span class="nombre-cliente">{{ c.nombre }}</span>
+                            {% if c.nombre_local %}
+                                <span class="nombre-local">({{ c.nombre_local }})</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if c.tipo_pago == 'CREDITO' %}
+                                <span class="badge bg-secondary">
+                                    {{ c.get_frecuencia_pago_display }}
+                                </span>
+                            {% else %}
+                                <span class="texto-secundario small">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if c.deuda > 0 %}
+                                <span class="deuda-valor">Gs. {{ c.deuda|floatformat:0 }}</span>
+                            {% else %}
+                                <span class="texto-secundario">Gs. 0</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center py-4">
+                            No hay clientes que coincidan con los filtros.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            {% if clientes %}
+            <tfoot>
+                <tr class="fila-total">
+                    <td colspan="2" class="text-end fw-bold">TOTAL GENERAL:</td>
+                    <td class="text-end fw-bold">
+                        <span class="deuda-valor-grande">
+                            Gs. {{ monto_total_deuda|floatformat:0 }}
+                        </span>
+                    </td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+<!-- ============================================================
+     AUTO-FILTRADO
+     ============================================================ -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('form-filtros-deudas');
+    const inputBuscar = document.getElementById('input-buscar-deudas');
+    const checkboxDeuda = document.getElementById('solo_con_deuda');
+    if (!form) return;
+
+    // Auto-submit al cambiar el switch
+    if (checkboxDeuda) {
+        checkboxDeuda.addEventListener('change', function () {
+            form.submit();
+        });
+    }
+
+    // Auto-submit del buscador con "debounce" (espera 500ms)
+    if (inputBuscar) {
+        let timeoutId = null;
+        inputBuscar.addEventListener('input', function () {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(function () {
+                form.submit();
+            }, 500);
+        });
+
+        // También submit inmediato al presionar Enter
+        inputBuscar.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(timeoutId);
+                form.submit();
+            }
+        });
+    }
+});
+</script>
+
+{% endblock %}

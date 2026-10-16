@@ -1,0 +1,181 @@
+{% extends 'facturacion/base.html' %}
+
+{% block content %}
+
+<!-- ============================================================
+     TABS DE INFORMES
+     ============================================================ -->
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link {% if pestaña_activa == 'deudas' %}active{% endif %}"
+           href="{% url 'informes_deudas' %}">
+            <i class="bi bi-cash-coin"></i> Deudas por cliente
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if pestaña_activa == 'ventas' %}active{% endif %}"
+           href="{% url 'informes_ventas' %}">
+            <i class="bi bi-graph-up"></i> Ventas del período
+        </a>
+    </li>
+</ul>
+
+<!-- ============================================================
+     ENCABEZADO
+     ============================================================ -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-graph-up"></i> Ventas del período</h2>
+        <p class="texto-secundario small mb-0">
+            Historial de ventas con filtros por cliente, forma de pago y fecha
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap no-print">
+        <a href="{% url 'informes_export_excel' %}?{{ request.GET.urlencode }}"
+           class="btn btn-outline-success fw-bold">
+            <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+        </a>
+        <button type="button" onclick="window.print()" class="btn btn-outline-secondary fw-bold">
+            <i class="bi bi-printer"></i> Imprimir
+        </button>
+    </div>
+</div>
+
+<!-- Filtros rápidos por fecha -->
+<div class="btn-group mb-3 flex-wrap no-print" role="group">
+    <a href="?fecha_desde={{ hoy }}&fecha_hasta={{ hoy }}" class="btn btn-outline-secondary btn-sm">Hoy</a>
+    <a href="?fecha_desde={{ primer_dia_mes }}&fecha_hasta={{ hoy }}" class="btn btn-outline-secondary btn-sm">Este mes</a>
+    <a href="{% url 'informes_ventas' %}" class="btn btn-outline-secondary btn-sm">Todo el historial</a>
+</div>
+
+<!-- Formulario de filtros -->
+<form method="GET" class="card p-3 mb-4 shadow-sm border-0 no-print">
+  <div class="row g-3">
+    <div class="col-12 col-md-6 col-lg-3">
+      <label class="form-label fw-bold">Cliente</label>
+      <input type="text" name="cliente" class="form-control"
+             value="{{ cliente_query }}" placeholder="Nombre del cliente...">
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+      <label class="form-label fw-bold">Forma de pago</label>
+      <select name="forma_pago" class="form-select">
+        <option value="">Todas</option>
+        <option value="EFECTIVO" {% if forma_pago_query == "EFECTIVO" %}selected{% endif %}>Efectivo</option>
+        <option value="CREDITO" {% if forma_pago_query == "CREDITO" %}selected{% endif %}>Crédito</option>
+        <option value="TRANSFERENCIA" {% if forma_pago_query == "TRANSFERENCIA" %}selected{% endif %}>Transferencia</option>
+      </select>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+      <label class="form-label fw-bold">Desde</label>
+      <input type="date" name="fecha_desde" class="form-control" value="{{ fecha_desde_query }}">
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+      <label class="form-label fw-bold">Hasta</label>
+      <input type="date" name="fecha_hasta" class="form-control" value="{{ fecha_hasta_query }}">
+    </div>
+    <div class="col-12 d-flex justify-content-end gap-2">
+      <a href="{% url 'informes_ventas' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-x-circle"></i> Limpiar
+      </a>
+      <button type="submit" class="btn btn-primary fw-bold">
+        <i class="bi bi-funnel"></i> Filtrar
+      </button>
+    </div>
+  </div>
+</form>
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icono"><i class="bi bi-receipt"></i></div>
+                <div>
+                    <div class="kpi-valor">{{ cantidad_filtrada }}</div>
+                    <div class="kpi-label">Ventas encontradas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icono"><i class="bi bi-cash-stack"></i></div>
+                <div>
+                    <div class="kpi-valor">Gs. {{ total_filtrado|floatformat:0 }}</div>
+                    <div class="kpi-label">Total del período</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icono"><i class="bi bi-graph-up-arrow"></i></div>
+                <div>
+                    <div class="kpi-valor">Gs. {{ ticket_promedio|floatformat:0 }}</div>
+                    <div class="kpi-label">Ticket promedio</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resumen por forma de pago -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card card-kpi p-3 text-center">
+            <div class="kpi-label mb-1"><i class="bi bi-cash"></i> Efectivo</div>
+            <div class="kpi-valor">Gs. {{ resumen_forma_pago.EFECTIVO|floatformat:0 }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-kpi p-3 text-center">
+            <div class="kpi-label mb-1"><i class="bi bi-hourglass-split"></i> Crédito</div>
+            <div class="kpi-valor">Gs. {{ resumen_forma_pago.CREDITO|floatformat:0 }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-kpi p-3 text-center">
+            <div class="kpi-label mb-1"><i class="bi bi-bank"></i> Transferencia</div>
+            <div class="kpi-valor">Gs. {{ resumen_forma_pago.TRANSFERENCIA|floatformat:0 }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de ventas -->
+<div class="tabla-local">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th># Venta</th>
+                    <th>Cliente</th>
+                    <th>Local</th>
+                    <th>Fecha</th>
+                    <th>Forma de Pago</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for venta in ventas %}
+                <tr>
+                    <td>{{ venta.id }}</td>
+                    <td>{{ venta.cliente.nombre }}</td>
+                    <td>{{ venta.cliente.nombre_local|default:"-" }}</td>
+                    <td>{{ venta.fecha|date:"d/m/Y H:i" }}</td>
+                    <td>{{ venta.get_forma_pago_display }}</td>
+                    <td class="text-end fw-bold">Gs. {{ venta.total|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-4">
+                        No se encontraron ventas con los filtros aplicados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -3,9 +3,11 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <h2 class="mb-0">Clientes</h2>
-    <a href="{% url 'cliente_create' %}" class="btn btn-primary fw-bold">
+    <button type="button" class="btn btn-primary fw-bold"
+            data-bs-toggle="modal" data-bs-target="#modalCliente"
+            data-modo="crear">
         <i class="bi bi-person-plus"></i> Nuevo Cliente
-    </a>
+    </button>
 </div>
 
 {% if error_eliminar %}
@@ -15,6 +17,7 @@
     </div>
 {% endif %}
 
+<!-- KPIs -->
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="card card-kpi p-3">
@@ -51,6 +54,7 @@
     </div>
 </div>
 
+<!-- Tabla de clientes -->
 <div class="tabla-local">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -59,9 +63,10 @@
                     <th>Nombre</th>
                     <th>Local</th>
                     <th>Teléfono</th>
+                    <th>Frecuencia</th>
                     <th>Estado de Deuda</th>
                     <th>Saldo Deudor</th>
-                    <th class="text-center">Acciones</th>
+                    <th class="text-center" style="width: 200px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -70,6 +75,15 @@
                         <td>{{ c.nombre }}</td>
                         <td>{{ c.nombre_local|default:"-" }}</td>
                         <td>{{ c.telefono|default:"-" }}</td>
+                        <td>
+                            {% if c.tipo_pago == 'CREDITO' %}
+                                <span class="badge bg-secondary">
+                                    {{ c.get_frecuencia_pago_display }}
+                                </span>
+                            {% else %}
+                                <span class="texto-secundario">-</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if c.deuda > 0 %}
                                 <span class="badge badge-deudor">DEUDOR</span>
@@ -82,19 +96,29 @@
                             <a href="{% url 'pagar_deuda' c.id %}" class="btn btn-info btn-sm fw-bold text-white" title="Cobrar / Abonar">
                                 <i class="bi bi-cash-coin"></i>
                             </a>
-                            <a href="{% url 'cliente_update' c.id %}" class="btn btn-warning btn-sm fw-bold" title="Editar">
+                            <button type="button" class="btn btn-warning btn-sm fw-bold"
+                                    data-bs-toggle="modal" data-bs-target="#modalCliente"
+                                    data-modo="editar"
+                                    data-id="{{ c.pk }}"
+                                    data-nombre="{{ c.nombre }}"
+                                    data-nombre-local="{{ c.nombre_local|default:'' }}"
+                                    data-tipo-pago="{{ c.tipo_pago|default:'' }}"
+                                    data-frecuencia-pago="{{ c.frecuencia_pago|default:'' }}"
+                                    data-telefono="{{ c.telefono|default:'' }}"
+                                    title="Editar">
                                 <i class="bi bi-pencil"></i>
-                            </a>
+                            </button>
                             <button type="button" class="btn btn-danger btn-sm fw-bold" title="Eliminar"
                                     data-bs-toggle="modal" data-bs-target="#modalEliminarCliente"
-                                    data-nombre="{{ c.nombre }}" data-url="{% url 'cliente_delete' c.id %}">
+                                    data-nombre="{{ c.nombre }}"
+                                    data-url="{% url 'cliente_delete' c.id %}">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-4">No hay clientes registrados.</td>
+                        <td colspan="7" class="text-center py-4">No hay clientes registrados.</td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -102,28 +126,165 @@
     </div>
 </div>
 
+<!-- ============================================================
+     MODAL: CREAR / EDITAR CLIENTE
+     ============================================================ -->
+<div class="modal fade" id="modalCliente" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content crud-modal">
+      <form id="form-cliente-modal" method="POST">
+        {% csrf_token %}
+
+        <div class="modal-header border-0">
+          <h4 class="modal-title" id="modalClienteTitulo">
+            <i class="bi bi-person-plus text-warning"></i>
+            <span id="modalClienteTituloTexto">Nuevo Cliente</span>
+          </h4>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="id_nombre_cliente" class="form-label fw-bold">Nombre *</label>
+            <input type="text" name="nombre" id="id_nombre_cliente"
+                   class="form-control {% if form_modal.nombre.errors %}is-invalid{% endif %}"
+                   placeholder="Ej: Juan Pérez"
+                   autocomplete="off" required>
+            {% if form_modal.nombre.errors %}
+              <div class="invalid-feedback d-block">{{ form_modal.nombre.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label for="id_nombre_local" class="form-label fw-bold">
+              Nombre del local <span class="text-muted">(opcional)</span>
+            </label>
+            <input type="text" name="nombre_local" id="id_nombre_local"
+                   class="form-control {% if form_modal.nombre_local.errors %}is-invalid{% endif %}"
+                   placeholder="Ej: Almacén Don Pedro"
+                   autocomplete="off">
+            {% if form_modal.nombre_local.errors %}
+              <div class="invalid-feedback d-block">{{ form_modal.nombre_local.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label for="id_tipo_pago" class="form-label fw-bold">Preferencia de pago</label>
+            <select name="tipo_pago" id="id_tipo_pago"
+                    class="form-select {% if form_modal.tipo_pago.errors %}is-invalid{% endif %}">
+              <option value="CONTADO" {% if form_modal.tipo_pago.value == 'CONTADO' %}selected{% endif %}>
+                Contado
+              </option>
+              <option value="CREDITO" {% if form_modal.tipo_pago.value == 'CREDITO' %}selected{% endif %}>
+                Crédito
+              </option>
+              <option value="TRANSFERENCIA" {% if form_modal.tipo_pago.value == 'TRANSFERENCIA' %}selected{% endif %}>
+                Transferencia
+              </option>
+            </select>
+            {% if form_modal.tipo_pago.errors %}
+              <div class="invalid-feedback d-block">{{ form_modal.tipo_pago.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Bloque de frecuencia: solo visible si tipo_pago = CREDITO -->
+          <div class="mb-3" id="bloque-frecuencia-pago" style="display: none;">
+            <label for="id_frecuencia_pago" class="form-label fw-bold">
+              <i class="bi bi-calendar-week text-warning"></i>
+              Frecuencia de pago del crédito
+            </label>
+            <select name="frecuencia_pago" id="id_frecuencia_pago"
+                    class="form-select {% if form_modal.frecuencia_pago.errors %}is-invalid{% endif %}">
+              <option value="SEMANAL" {% if form_modal.frecuencia_pago.value == 'SEMANAL' %}selected{% endif %}>
+                Semanal
+              </option>
+              <option value="MENSUAL" {% if form_modal.frecuencia_pago.value == 'MENSUAL' %}selected{% endif %}>
+                Mensual
+              </option>
+            </select>
+            <small class="texto-secundario d-block mt-1">
+              ¿Con qué frecuencia paga cuando tiene deuda?
+            </small>
+            {% if form_modal.frecuencia_pago.errors %}
+              <div class="invalid-feedback d-block">{{ form_modal.frecuencia_pago.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label for="id_telefono" class="form-label fw-bold">
+              Teléfono <span class="text-muted">(opcional)</span>
+            </label>
+            <input type="text" name="telefono" id="id_telefono"
+                   class="form-control {% if form_modal.telefono.errors %}is-invalid{% endif %}"
+                   placeholder="Ej: 0981 123 456"
+                   autocomplete="off">
+            {% if form_modal.telefono.errors %}
+              <div class="invalid-feedback d-block">{{ form_modal.telefono.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="modal-footer border-0 d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle"></i> Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary fw-bold">
+            <i class="bi bi-check-circle"></i> Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: ELIMINAR CLIENTE
+     ============================================================ -->
 <div class="modal fade" id="modalEliminarCliente" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger"></i> Eliminar cliente</h5>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content crud-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">
+          <i class="bi bi-exclamation-triangle text-danger"></i> Eliminar cliente
+        </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        ¿Seguro que querés eliminar a "<span id="modalEliminarClienteNombre"></span>"?
+        ¿Seguro que querés eliminar a "<span id="modalEliminarClienteNombre" class="fw-bold"></span>"?
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer border-0 d-flex justify-content-between">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
         <form id="formEliminarCliente" method="post">
           {% csrf_token %}
-          <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Eliminar</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Eliminar
+          </button>
         </form>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Datos que la vista pasa al template si hay que reabrir el modal con errores -->
+<script id="datos-modal-cliente" type="application/json">
+{
+  "modal_activo": {{ modal_activo|default:"null"|safe }},
+  "objeto_id": {% if objeto_editar %}{{ objeto_editar.pk }}{% else %}null{% endif %},
+  "valores": {
+    "nombre": "{{ form_modal.nombre.value|default:''|escapejs }}",
+    "nombre_local": "{{ form_modal.nombre_local.value|default:''|escapejs }}",
+    "tipo_pago": "{{ form_modal.tipo_pago.value|default:''|escapejs }}",
+    "frecuencia_pago": "{{ form_modal.frecuencia_pago.value|default:''|escapejs }}",
+    "telefono": "{{ form_modal.telefono.value|default:''|escapejs }}"
+  }
+}
+</script>
+
+{% load static %}
+<script src="{% static 'facturacion/js/cliente_modal.js' %}"></script>
+
 <script>
+// Modal de eliminación (independiente del de CRUD)
 document.getElementById('modalEliminarCliente').addEventListener('show.bs.modal', function (event) {
     const boton = event.relatedTarget;
     document.getElementById('modalEliminarClienteNombre').textContent = boton.getAttribute('data-nombre');
