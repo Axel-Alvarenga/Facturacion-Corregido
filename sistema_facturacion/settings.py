@@ -149,3 +149,21 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # =============================================================================
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# =========================================================
+# Horario de cierre del sistema
+# =========================================================
+# Hora de cierre (24h). Después de esta hora, el sistema
+# cierra la sesión y redirige al login.
+CIERRE_SISTEMA_HORA = 20
+
+# Hora de apertura (24h). Se usa en el mensaje del login
+# ("El sistema está cerrado. Volvé a partir de las X hs.")
+APERTURA_SISTEMA_HORA = 8
+
+# Minutos de aviso antes del cierre (para mostrar el modal
+# "El sistema se cierra en X minutos").
+AVISO_CIERRE_MINUTOS_ANTES = 5
+
+# Minutos que se pueden extender con el botón "Extender 10 min".
+EXTENSION_MINUTOS = 10

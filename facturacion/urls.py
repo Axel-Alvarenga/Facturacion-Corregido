@@ -6,6 +6,7 @@ urlpatterns = [
 
     path('login/', views.custom_login, name='login'),
     path('logout/', views.custom_logout, name='logout'),
+    path('extender-sesion/', views.extender_sesion, name='extender_sesion'),
 
     path('clientes/', views.cliente_list, name='cliente_list'),
     path('clientes/nuevo/', views.cliente_create, name='cliente_create'),

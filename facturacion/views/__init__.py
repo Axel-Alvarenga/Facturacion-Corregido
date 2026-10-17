@@ -1,4 +1,4 @@
-from .auth_views import custom_login, custom_logout
+from .auth_views import custom_login, custom_logout, extender_sesion
 from .dashboard_views import dashboard
 from .cliente_views import (
     cliente_list, cliente_create, cliente_update, cliente_delete, pagar_deuda,
@@ -25,7 +25,7 @@ from .auditoria_views import (
 )
 
 __all__ = [
-    'custom_login', 'custom_logout', 'dashboard',
+    'custom_login', 'custom_logout', 'extender_sesion', 'dashboard',
     'cliente_list', 'cliente_create', 'cliente_update', 'cliente_delete', 'pagar_deuda',
     'producto_list', 'producto_create', 'producto_update', 'producto_delete',
     'crear_venta', 'confirmar_transferencia', 'venta_confirmada',

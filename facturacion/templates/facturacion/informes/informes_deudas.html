@@ -2,9 +2,7 @@
 
 {% block content %}
 
-<!-- ============================================================
-     TABS DE INFORMES
-     ============================================================ -->
+<!-- Tabs -->
 <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
         <a class="nav-link {% if pestaña_activa == 'deudas' %}active{% endif %}"
@@ -20,9 +18,7 @@
     </li>
 </ul>
 
-<!-- ============================================================
-     ENCABEZADO
-     ============================================================ -->
+<!-- Encabezado -->
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h2 class="mb-0"><i class="bi bi-cash-coin"></i> Deudas por cliente</h2>
@@ -30,16 +26,14 @@
             Listado de clientes con su saldo deudor actual
         </p>
     </div>
-        <a href="{% url 'informes_deudas_pdf' %}?{{ request.GET.urlencode }}"
+    <a href="{% url 'informes_deudas_pdf' %}?{{ request.GET.urlencode }}"
        class="btn btn-outline-danger fw-bold" id="btn-descargar-pdf"
        target="_blank">
         <i class="bi bi-file-earmark-pdf"></i> Descargar PDF
     </a>
 </div>
 
-<!-- ============================================================
-     KPIs
-     ============================================================ -->
+<!-- KPIs -->
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="card card-kpi p-3">
@@ -76,9 +70,7 @@
     </div>
 </div>
 
-<!-- ============================================================
-     FILTROS (auto-aplican, sin botones)
-     ============================================================ -->
+<!-- Filtros -->
 <form method="GET" class="card p-3 mb-4 shadow-sm border-0" id="form-filtros-deudas">
   <div class="row g-3 align-items-end">
     <div class="col-12 col-md-7 col-lg-6">
@@ -101,9 +93,7 @@
   </div>
 </form>
 
-<!-- ============================================================
-     TABLA DE DEUDAS
-     ============================================================ -->
+<!-- Tabla de deudas -->
 <div class="tabla-local">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -112,6 +102,7 @@
                     <th>Nombre</th>
                     <th>Frecuencia</th>
                     <th class="text-end">Deuda Total</th>
+                    <th class="text-center" style="width: 120px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -139,10 +130,21 @@
                                 <span class="texto-secundario">Gs. 0</span>
                             {% endif %}
                         </td>
+                        <td class="text-center">
+                            {% if c.deuda > 0 %}
+                                <a href="{% url 'pagar_deuda' c.id %}"
+                                   class="btn btn-info btn-sm fw-bold text-white"
+                                   title="Cobrar / Abonar deuda">
+                                    <i class="bi bi-cash-coin"></i> Pagar
+                                </a>
+                            {% else %}
+                                <span class="texto-secundario small">-</span>
+                            {% endif %}
+                        </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="3" class="text-center py-4">
+                        <td colspan="4" class="text-center py-4">
                             No hay clientes que coincidan con los filtros.
                         </td>
                     </tr>
@@ -157,6 +159,7 @@
                             Gs. {{ monto_total_deuda|floatformat:0 }}
                         </span>
                     </td>
+                    <td></td>
                 </tr>
             </tfoot>
             {% endif %}
@@ -164,9 +167,7 @@
     </div>
 </div>
 
-<!-- ============================================================
-     AUTO-FILTRADO
-     ============================================================ -->
+<!-- Auto-filtrado -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('form-filtros-deudas');
@@ -174,14 +175,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const checkboxDeuda = document.getElementById('solo_con_deuda');
     if (!form) return;
 
-    // Auto-submit al cambiar el switch
     if (checkboxDeuda) {
         checkboxDeuda.addEventListener('change', function () {
             form.submit();
         });
     }
 
-    // Auto-submit del buscador con "debounce" (espera 500ms)
     if (inputBuscar) {
         let timeoutId = null;
         inputBuscar.addEventListener('input', function () {
@@ -191,7 +190,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 500);
         });
 
-        // También submit inmediato al presionar Enter
         inputBuscar.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();

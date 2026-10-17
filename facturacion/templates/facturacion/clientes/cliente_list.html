@@ -66,7 +66,7 @@
                     <th>Frecuencia</th>
                     <th>Estado de Deuda</th>
                     <th>Saldo Deudor</th>
-                    <th class="text-center" style="width: 200px;">Acciones</th>
+                    <th class="text-center" style="width: 150px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -93,9 +93,6 @@
                         </td>
                         <td class="fw-bold">Gs. {{ c.deuda|floatformat:2 }}</td>
                         <td class="text-center text-nowrap">
-                            <a href="{% url 'pagar_deuda' c.id %}" class="btn btn-info btn-sm fw-bold text-white" title="Cobrar / Abonar">
-                                <i class="bi bi-cash-coin"></i>
-                            </a>
                             <button type="button" class="btn btn-warning btn-sm fw-bold"
                                     data-bs-toggle="modal" data-bs-target="#modalCliente"
                                     data-modo="editar"
@@ -168,9 +165,7 @@
           </div>
 
           <div class="mb-3">
-            <label for="id_nombre_local" class="form-label fw-bold">
-              Local *
-            </label>
+            <label for="id_nombre_local" class="form-label fw-bold">Local *</label>
             <input type="text" name="nombre_local" id="id_nombre_local"
                    class="form-control {% if form_modal.nombre_local.errors %}is-invalid{% endif %}"
                    placeholder="Ej: Almacén Don Pedro o Particular"
@@ -278,7 +273,7 @@
 
 <script id="datos-modal-cliente" type="application/json">
 {
-  "modal_activo": {{ modal_activo|default:"null"|safe }},
+  "modal_activo": {% if modal_activo %}"{{ modal_activo|escapejs }}"{% else %}null{% endif %},
   "objeto_id": {% if objeto_editar %}{{ objeto_editar.pk }}{% else %}null{% endif %},
   "valores": {
     "nombre": "{{ form_modal.nombre.value|default:''|escapejs }}",
@@ -306,21 +301,17 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter') return;
 
-        // Si ya hay un modal abierto, ignorar
         if (document.querySelector('.modal.show')) return;
 
-        // Si el foco está en un input/textarea/select, ignorar
         const el = document.activeElement;
         const tag = el ? el.tagName : '';
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
             return;
         }
-        // Si el foco está en un botón o link, dejar que el navegador lo active normalmente
         if (tag === 'BUTTON' || tag === 'A') {
             return;
         }
 
-        // Caso válido: nadie con foco → abrir el modal
         e.preventDefault();
         const modalEl = document.getElementById('modalCliente');
         if (modalEl) {
