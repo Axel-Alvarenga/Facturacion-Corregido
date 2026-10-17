@@ -17,7 +17,7 @@ def _clientes_filtrados_deudas(request):
     buscar = request.GET.get('buscar', '').strip()
     solo_con_deuda = request.GET.get('solo_con_deuda', '') == '1'
 
-    # ✅ ORDEN POR LOCAL PRIMERO, LUEGO POR NOMBRE
+    # Orden por Local primero, luego por Nombre
     clientes = Cliente.objects.all().order_by('nombre_local', 'nombre')
 
     if buscar:
@@ -152,7 +152,6 @@ def informes_deudas_pdf(request):
         estilo_subtitulo
     ))
 
-    # Columnas como estaban antes (sin "Local" separado)
     data = [[
         Paragraph('<b>Nombre</b>', estilo_celda_bold),
         Paragraph('<b>Frecuencia</b>', estilo_celda_bold_centro),
@@ -164,7 +163,6 @@ def informes_deudas_pdf(request):
     ]]
 
     for c in clientes_lista:
-        # Nombre con local entre paréntesis como antes
         nombre_con_local = c.nombre
         if c.nombre_local:
             nombre_con_local = f'{c.nombre} ({c.nombre_local})'
@@ -196,10 +194,6 @@ def informes_deudas_pdf(request):
         Paragraph('', estilo_celda),
     ])
 
-    # Anchos de la tabla como estaban antes (sin la columna Local)
-    # Oficio vertical: 216mm - 20mm márgenes = 196mm útiles
-    # Nombre: 62mm | Frecuencia: 20mm | Deuda Total: 26mm
-    # Desayuno: 22mm | Almuerzo: 22mm | Total: 22mm | Estado: 22mm
     col_widths = [
         62 * mm,
         20 * mm,

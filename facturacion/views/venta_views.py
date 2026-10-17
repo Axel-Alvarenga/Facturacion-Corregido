@@ -223,3 +223,53 @@ def buscar_productos(request):
         for p in productos
     ]
     return JsonResponse({'results': results})
+@login_required(login_url='login')
+def venta_detalle_api(request, venta_id):
+    """Devuelve el detalle completo de una venta en JSON, para el modal."""
+    venta = get_object_or_404(
+        Venta.objects.select_related('cliente'),
+        pk=venta_id
+    )
+
+    detalles = []
+    for d in venta.detalles.select_related('producto').all():
+        detalles.append({
+            'tipo': 'producto',
+            'producto': d.producto.nombre,
+            'cantidad': d.cantidad,
+            'precio_unitario': float(d.precio_unitario),
+            'precio_unitario_fmt': f'{d.precio_unitario:,.0f}',
+            'subtotal': float(d.precio_unitario * d.cantidad),
+            'subtotal_fmt': f'{d.precio_unitario * d.cantidad:,.0f}',
+        })
+
+    manuales = []
+    for i in venta.items_manuales.all():
+        manuales.append({
+            'tipo': 'manual',
+            'descripcion': i.descripcion,
+            'precio': float(i.precio),
+            'precio_fmt': f'{i.precio:,.0f}',
+        })
+
+    return JsonResponse({
+        'ok': True,
+        'venta': {
+            'id': venta.id,
+            'cliente': venta.cliente.nombre,
+            'nombre_local': venta.cliente.nombre_local or '',
+            'fecha': venta.fecha.strftime('%d/%m/%Y %H:%M'),
+            'forma_pago': venta.get_forma_pago_display(),
+            'forma_pago_raw': venta.forma_pago,
+            'estado': venta.get_estado_display(),
+            'estado_raw': venta.estado,
+            'total': float(venta.total),
+            'total_fmt': f'{venta.total:,.0f}',
+            'monto_pagado_fmt': f'{venta.monto_pagado:,.0f}' if venta.monto_pagado is not None else None,
+            'vuelto_fmt': f'{venta.vuelto:,.0f}' if venta.vuelto is not None else None,
+            'tiene_vuelto': venta.tiene_vuelto(),
+            'detalles': detalles,
+            'items_manuales': manuales,
+            'ticket_url': f'/ventas/{venta.id}/ticket/',
+        }
+    })
