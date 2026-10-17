@@ -102,7 +102,7 @@
                     <th>Nombre</th>
                     <th>Frecuencia</th>
                     <th class="text-end">Deuda Total</th>
-                    <th class="text-center" style="width: 120px;">Acciones</th>
+                    <th class="text-center" style="width: 170px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -130,12 +130,18 @@
                                 <span class="texto-secundario">Gs. 0</span>
                             {% endif %}
                         </td>
-                        <td class="text-center">
+                        <td class="text-center text-nowrap">
                             {% if c.deuda > 0 %}
                                 <a href="{% url 'pagar_deuda' c.id %}"
                                    class="btn btn-info btn-sm fw-bold text-white"
                                    title="Cobrar / Abonar deuda">
                                     <i class="bi bi-cash-coin"></i> Pagar
+                                </a>
+                                <a href="{% url 'informe_deuda_cliente_pdf' c.id %}"
+                                   class="btn btn-outline-danger btn-sm fw-bold"
+                                   target="_blank"
+                                   title="Descargar detalle de deuda en PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i>
                                 </a>
                             {% else %}
                                 <span class="texto-secundario small">-</span>

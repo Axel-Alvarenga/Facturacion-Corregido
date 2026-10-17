@@ -16,6 +16,7 @@ from .pedido_views import (
 from .informe_views import (
     informes_deudas,
     informes_deudas_pdf,
+    informe_deuda_cliente_pdf,
     informes_ventas,
     informes_export_excel,
     _ventas_filtradas,
@@ -31,6 +32,7 @@ __all__ = [
     'crear_venta', 'confirmar_transferencia', 'venta_confirmada',
     'ticket_venta', 'buscar_productos', 'venta_detalle_api',
     'pedido_create', 'pedido_list', 'pedido_actualizar_estado',
-    'informes_deudas', 'informes_deudas_pdf', 'informes_ventas', 'informes_export_excel',
+    'informes_deudas', 'informes_deudas_pdf', 'informe_deuda_cliente_pdf',
+    'informes_ventas', 'informes_export_excel',
     'auditoria_list', 'auditoria_detalle', 'auditoria_export_excel',
 ]

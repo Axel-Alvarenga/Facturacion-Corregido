@@ -34,6 +34,7 @@ urlpatterns = [
     path('informes/', views.informes_deudas, name='informes'),
     path('informes/deudas/', views.informes_deudas, name='informes_deudas'),
     path('informes/deudas/pdf/', views.informes_deudas_pdf, name='informes_deudas_pdf'),
+    path('informes/deudas/<int:cliente_id>/pdf/', views.informe_deuda_cliente_pdf, name='informe_deuda_cliente_pdf'),
     path('informes/ventas/', views.informes_ventas, name='informes_ventas'),
     path('informes/exportar-excel/', views.informes_export_excel, name='informes_export_excel'),
 

@@ -2,7 +2,7 @@ from decimal import Decimal
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Q
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from ..models import Cliente, Venta
 
@@ -236,6 +236,277 @@ def informes_deudas_pdf(request):
             'Pie', parent=estilos['Normal'], fontSize=7,
             textColor=color_gris_texto, alignment=TA_CENTER,
         )
+    ))
+
+    doc.build(elementos)
+    return response
+
+
+@login_required(login_url='login')
+def informe_deuda_cliente_pdf(request, cliente_id):
+    """Genera un PDF con el detalle de deuda de un cliente:
+    - Datos del cliente (nombre, local, teléfono, frecuencia de pago)
+    - Deuda actual
+    - Historial de ventas a crédito con el detalle de productos
+    """
+    from reportlab.lib.pagesizes import legal
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import (
+        SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    )
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+
+    cliente = get_object_or_404(Cliente, pk=cliente_id)
+
+    ventas_credito = (
+        Venta.objects
+        .filter(cliente=cliente, forma_pago='CREDITO')
+        .prefetch_related('detalles__producto', 'items_manuales')
+        .order_by('-fecha')
+    )
+    ventas_lista = list(ventas_credito)
+
+    total_historico = sum((v.total for v in ventas_lista), Decimal('0.00'))
+
+    response = HttpResponse(content_type='application/pdf')
+    fecha_archivo = timezone.localdate().strftime('%Y-%m-%d')
+    nombre_archivo = cliente.nombre.replace(' ', '_').replace('/', '-')
+    response['Content-Disposition'] = (
+        f'attachment; filename="deuda_{nombre_archivo}_{fecha_archivo}.pdf"'
+    )
+
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=legal,
+        leftMargin=12 * mm,
+        rightMargin=12 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
+        title=f'Detalle de deuda - {cliente.nombre}',
+        author='Comedor A.R.M.',
+    )
+
+    color_negro = colors.black
+    color_gris_texto = colors.HexColor('#333333')
+    color_gris_fondo = colors.HexColor('#E8E8E8')
+    color_gris_suave = colors.HexColor('#F5F5F5')
+    color_borde = colors.black
+
+    estilos = getSampleStyleSheet()
+
+    estilo_titulo = ParagraphStyle(
+        'Titulo', parent=estilos['Heading1'], fontSize=16,
+        textColor=color_negro, spaceAfter=2, alignment=TA_LEFT,
+        fontName='Helvetica-Bold',
+    )
+    estilo_subtitulo = ParagraphStyle(
+        'Subtitulo', parent=estilos['Normal'], fontSize=9,
+        textColor=color_gris_texto, alignment=TA_LEFT, spaceAfter=10,
+    )
+    estilo_label = ParagraphStyle(
+        'Label', parent=estilos['Normal'], fontSize=9,
+        textColor=color_gris_texto, leading=12,
+    )
+    estilo_valor = ParagraphStyle(
+        'Valor', parent=estilos['Normal'], fontSize=10,
+        textColor=color_negro, fontName='Helvetica-Bold', leading=13,
+    )
+    estilo_deuda = ParagraphStyle(
+        'Deuda', parent=estilos['Normal'], fontSize=16,
+        textColor=color_negro, fontName='Helvetica-Bold',
+        alignment=TA_RIGHT, leading=18,
+    )
+    estilo_celda = ParagraphStyle(
+        'Celda', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, leading=10,
+    )
+    estilo_celda_centro = ParagraphStyle(
+        'CeldaCentro', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, alignment=TA_CENTER, leading=10,
+    )
+    estilo_celda_right = ParagraphStyle(
+        'CeldaRight', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, alignment=TA_RIGHT, leading=10,
+    )
+    estilo_celda_bold = ParagraphStyle(
+        'CeldaBold', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, fontName='Helvetica-Bold', leading=10,
+    )
+    estilo_celda_bold_right = ParagraphStyle(
+        'CeldaBoldRight', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, fontName='Helvetica-Bold',
+        alignment=TA_RIGHT, leading=10,
+    )
+    estilo_celda_bold_centro = ParagraphStyle(
+        'CeldaBoldCentro', parent=estilos['Normal'], fontSize=8,
+        textColor=color_negro, fontName='Helvetica-Bold',
+        alignment=TA_CENTER, leading=10,
+    )
+    estilo_seccion = ParagraphStyle(
+        'Seccion', parent=estilos['Heading2'], fontSize=11,
+        textColor=color_negro, spaceAfter=6, fontName='Helvetica-Bold',
+    )
+    estilo_pie = ParagraphStyle(
+        'Pie', parent=estilos['Normal'], fontSize=7,
+        textColor=color_gris_texto, alignment=TA_LEFT,
+    )
+
+    elementos = []
+
+    # ---- Encabezado ----
+    elementos.append(Paragraph('Comedor A.R.M.', estilo_titulo))
+    fecha_hoy = timezone.localtime()
+    elementos.append(Paragraph(
+        f'Detalle de deuda — Generado: {fecha_hoy.strftime("%d/%m/%Y %H:%M")}',
+        estilo_subtitulo
+    ))
+
+    # ---- Datos del cliente ----
+    nombre_con_local = cliente.nombre
+    if cliente.nombre_local:
+        nombre_con_local = f'{cliente.nombre} ({cliente.nombre_local})'
+
+    frecuencia = '-'
+    if cliente.tipo_pago == 'CREDITO':
+        frecuencia = cliente.get_frecuencia_pago_display()
+
+    telefono = cliente.telefono or '-'
+
+    datos_cliente = [
+        [
+            Paragraph('Cliente:', estilo_label),
+            Paragraph(nombre_con_local, estilo_valor),
+        ],
+        [
+            Paragraph('Teléfono:', estilo_label),
+            Paragraph(telefono, estilo_valor),
+        ],
+        [
+            Paragraph('Frecuencia de pago:', estilo_label),
+            Paragraph(frecuencia, estilo_valor),
+        ],
+    ]
+
+    tabla_cliente = Table(datos_cliente, colWidths=[38 * mm, 136 * mm])
+    tabla_cliente.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elementos.append(tabla_cliente)
+
+    elementos.append(Spacer(1, 8))
+
+    # ---- Deuda actual ----
+    deuda_texto = f'{cliente.deuda:,.0f}'.replace(',', '.')
+    tabla_deuda = Table(
+        [[
+            Paragraph('DEUDA ACTUAL:', estilo_valor),
+            Paragraph(f'Gs. {deuda_texto}', estilo_deuda),
+        ]],
+        colWidths=[42 * mm, 132 * mm],
+    )
+    tabla_deuda.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), color_gris_fondo),
+        ('BOX', (0, 0), (-1, -1), 1.2, color_borde),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elementos.append(tabla_deuda)
+
+    elementos.append(Spacer(1, 12))
+
+    # ---- Historial de ventas a crédito ----
+    elementos.append(Paragraph(
+        '<b>Historial de ventas a crédito</b>', estilo_seccion
+    ))
+
+    if not ventas_lista:
+        elementos.append(Paragraph(
+            'Este cliente no tiene ventas a crédito registradas.',
+            estilo_subtitulo
+        ))
+    else:
+        data = [[
+            Paragraph('<b>#</b>', estilo_celda_bold_centro),
+            Paragraph('<b>Fecha</b>', estilo_celda_bold_centro),
+            Paragraph('<b>Productos</b>', estilo_celda_bold),
+            Paragraph('<b>Total</b>', estilo_celda_bold_right),
+        ]]
+
+        for v in ventas_lista:
+            items_texto = []
+            for d in v.detalles.all():
+                subtotal = d.precio_unitario * d.cantidad
+                items_texto.append(
+                    f'{d.producto.nombre} x{d.cantidad} '
+                    f'(Gs. {subtotal:,.0f})'
+                )
+            for m in v.items_manuales.all():
+                items_texto.append(
+                    f'{m.descripcion} (manual) (Gs. {m.precio:,.0f})'
+                )
+            if not items_texto:
+                items_texto.append('(sin ítems)')
+
+            productos_html = '<br/>'.join(
+                t.replace(',', '.') for t in items_texto
+            )
+
+            data.append([
+                Paragraph(str(v.id), estilo_celda_centro),
+                Paragraph(v.fecha.strftime('%d/%m/%Y'), estilo_celda_centro),
+                Paragraph(productos_html, estilo_celda),
+                Paragraph(
+                    f'{v.total:,.0f}'.replace(',', '.'),
+                    estilo_celda_right
+                ),
+            ])
+
+        total_texto = f'{total_historico:,.0f}'.replace(',', '.')
+        data.append([
+            Paragraph('', estilo_celda),
+            Paragraph('', estilo_celda),
+            Paragraph('<b>TOTAL HISTÓRICO A CRÉDITO</b>', estilo_celda_bold_right),
+            Paragraph(f'<b>{total_texto}</b>', estilo_celda_bold_right),
+        ])
+
+        col_widths = [14 * mm, 24 * mm, 112 * mm, 24 * mm]
+        tabla = Table(data, colWidths=col_widths, repeatRows=1)
+
+        estilos_tabla = [
+            ('BACKGROUND', (0, 0), (-1, 0), color_gris_fondo),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ('BOX', (0, 0), (-1, -1), 0.8, color_borde),
+            ('INNERGRID', (0, 0), (-1, -1), 0.4, color_borde),
+            ('BACKGROUND', (0, -1), (-1, -1), color_gris_fondo),
+            ('LINEABOVE', (0, -1), (-1, -1), 1.2, color_borde),
+        ]
+
+        for i in range(1, len(ventas_lista) + 1):
+            if i % 2 == 0:
+                estilos_tabla.append(
+                    ('BACKGROUND', (0, i), (-1, i), color_gris_suave)
+                )
+
+        tabla.setStyle(TableStyle(estilos_tabla))
+        elementos.append(tabla)
+
+    elementos.append(Spacer(1, 8))
+    elementos.append(Paragraph(
+        'Nota: el historial muestra todas las ventas a crédito del cliente. '
+        'La deuda actual puede ser menor si hubo pagos parciales.',
+        estilo_pie
     ))
 
     doc.build(elementos)
