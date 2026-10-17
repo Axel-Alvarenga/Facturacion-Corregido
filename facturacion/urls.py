@@ -24,6 +24,7 @@ urlpatterns = [
     path('ventas/<int:venta_id>/ticket/', views.ticket_venta, name='ticket_venta'),
     path('ventas/<int:venta_id>/confirmar-transferencia/', views.confirmar_transferencia, name='confirmar_transferencia'),
     path('ventas/<int:venta_id>/detalle/', views.venta_detalle_api, name='venta_detalle_api'),
+    path('ventas/<int:venta_id>/anular/', views.anular_venta, name='anular_venta'),
 
     path('pedidos/', views.pedido_list, name='pedido_list'),
     path('pedidos/nuevo/', views.pedido_create, name='pedido_create'),

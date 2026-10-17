@@ -87,11 +87,23 @@
                         <td>
                             {% if c.deuda > 0 %}
                                 <span class="badge badge-deudor">DEUDOR</span>
+                            {% elif c.deuda < 0 %}
+                                <span class="badge bg-info text-dark">SALDO A FAVOR</span>
                             {% else %}
                                 <span class="badge badge-al-dia">SIN DEUDA</span>
                             {% endif %}
                         </td>
-                        <td class="fw-bold">Gs. {{ c.deuda|floatformat:2 }}</td>
+                        <td class="fw-bold">
+                            {% if c.deuda > 0 %}
+                                Gs. {{ c.deuda|floatformat:2 }}
+                            {% elif c.deuda < 0 %}
+                                <span class="text-info">
+                                    Gs. {{ c.deuda|floatformat:2 }}
+                                </span>
+                            {% else %}
+                                Gs. 0
+                            {% endif %}
+                        </td>
                         <td class="text-center text-nowrap">
                             <button type="button" class="btn btn-warning btn-sm fw-bold"
                                     data-bs-toggle="modal" data-bs-target="#modalCliente"

@@ -74,8 +74,9 @@
   </div>
 </form>
 
+<!-- KPIs principales -->
 <div class="row g-3 mb-3">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-kpi p-3">
             <div class="d-flex align-items-center gap-3">
                 <div class="kpi-icono"><i class="bi bi-receipt"></i></div>
@@ -86,18 +87,33 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-kpi p-3">
             <div class="d-flex align-items-center gap-3">
-                <div class="kpi-icono"><i class="bi bi-cash-stack"></i></div>
+                <div class="kpi-icono" style="background-color: rgba(46,125,50,0.15); color: #4CAF50;">
+                    <i class="bi bi-check-circle"></i>
+                </div>
                 <div>
-                    <div class="kpi-valor">Gs. {{ total_filtrado|floatformat:0 }}</div>
-                    <div class="kpi-label">Total del período</div>
+                    <div class="kpi-valor" style="color:#4CAF50;">Gs. {{ total_cobrado|floatformat:0 }}</div>
+                    <div class="kpi-label">Cobrado</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="kpi-icono" style="background-color: rgba(255,193,7,0.15); color: #FFC107;">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+                <div>
+                    <div class="kpi-valor" style="color:#FFC107;">Gs. {{ total_pendiente|floatformat:0 }}</div>
+                    <div class="kpi-label">Pendiente de cobro</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
         <div class="card card-kpi p-3">
             <div class="d-flex align-items-center gap-3">
                 <div class="kpi-icono"><i class="bi bi-graph-up-arrow"></i></div>
@@ -110,23 +126,45 @@
     </div>
 </div>
 
+<!-- Resumen por forma de pago (cobrado vs pendiente) -->
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="card card-kpi p-3 text-center">
-            <div class="kpi-label mb-1"><i class="bi bi-cash"></i> Efectivo</div>
-            <div class="kpi-valor">Gs. {{ resumen_forma_pago.EFECTIVO|floatformat:0 }}</div>
+        <div class="card card-kpi p-3">
+            <div class="kpi-label mb-2"><i class="bi bi-cash"></i> Efectivo</div>
+            <div class="d-flex justify-content-between">
+                <span class="texto-secundario small">Cobrado</span>
+                <span class="fw-bold" style="color:#4CAF50;">Gs. {{ resumen_forma_pago.EFECTIVO.cobrado|floatformat:0 }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="texto-secundario small">Pendiente</span>
+                <span class="fw-bold texto-secundario">Gs. {{ resumen_forma_pago.EFECTIVO.pendiente|floatformat:0 }}</span>
+            </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card card-kpi p-3 text-center">
-            <div class="kpi-label mb-1"><i class="bi bi-hourglass-split"></i> Crédito</div>
-            <div class="kpi-valor">Gs. {{ resumen_forma_pago.CREDITO|floatformat:0 }}</div>
+        <div class="card card-kpi p-3">
+            <div class="kpi-label mb-2"><i class="bi bi-hourglass-split"></i> Crédito</div>
+            <div class="d-flex justify-content-between">
+                <span class="texto-secundario small">Cobrado</span>
+                <span class="fw-bold" style="color:#4CAF50;">Gs. {{ resumen_forma_pago.CREDITO.cobrado|floatformat:0 }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="texto-secundario small">Pendiente</span>
+                <span class="fw-bold" style="color:#FFC107;">Gs. {{ resumen_forma_pago.CREDITO.pendiente|floatformat:0 }}</span>
+            </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card card-kpi p-3 text-center">
-            <div class="kpi-label mb-1"><i class="bi bi-bank"></i> Transferencia</div>
-            <div class="kpi-valor">Gs. {{ resumen_forma_pago.TRANSFERENCIA|floatformat:0 }}</div>
+        <div class="card card-kpi p-3">
+            <div class="kpi-label mb-2"><i class="bi bi-bank"></i> Transferencia</div>
+            <div class="d-flex justify-content-between">
+                <span class="texto-secundario small">Cobrado</span>
+                <span class="fw-bold" style="color:#4CAF50;">Gs. {{ resumen_forma_pago.TRANSFERENCIA.cobrado|floatformat:0 }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="texto-secundario small">Pendiente</span>
+                <span class="fw-bold" style="color:#FFC107;">Gs. {{ resumen_forma_pago.TRANSFERENCIA.pendiente|floatformat:0 }}</span>
+            </div>
         </div>
     </div>
 </div>
@@ -140,13 +178,20 @@
                     <th>Cliente (Local)</th>
                     <th>Fecha</th>
                     <th>Forma de Pago</th>
+                    <th>Estado</th>
                     <th class="text-end">Total</th>
                 </tr>
             </thead>
             <tbody>
                 {% for venta in ventas %}
-                <tr data-venta-id="{{ venta.id }}" style="cursor: pointer;" title="Clic para ver detalle">
-                    <td>{{ venta.id }}</td>
+                <tr data-venta-id="{{ venta.id }}" style="cursor: pointer;" title="Clic para ver detalle"
+                    {% if venta.anulada %}class="opacity-75"{% endif %}>
+                    <td>
+                        {{ venta.id }}
+                        {% if venta.anulada %}
+                            <span class="badge bg-danger ms-1">ANULADA</span>
+                        {% endif %}
+                    </td>
                     <td>
                         <span class="nombre-cliente">{{ venta.cliente.nombre }}</span>
                         {% if venta.cliente.nombre_local %}
@@ -155,11 +200,30 @@
                     </td>
                     <td>{{ venta.fecha|date:"d/m/Y H:i" }}</td>
                     <td>{{ venta.get_forma_pago_display }}</td>
+                    <td>
+                        {% if venta.estado == 'PENDIENTE' %}
+                            <span class="badge bg-warning text-dark">{{ venta.get_estado_display }}</span>
+                            {% if venta.forma_pago == 'TRANSFERENCIA' and not venta.anulada %}
+                                <button type="button"
+                                        class="btn btn-success btn-sm fw-bold ms-2 btn-confirmar-transferencia"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalConfirmarTransferencia"
+                                        data-venta-id="{{ venta.id }}"
+                                        data-venta-total="Gs. {{ venta.total|floatformat:0 }}"
+                                        data-venta-cliente="{{ venta.cliente.nombre }}"
+                                        title="Confirmar transferencia recibida">
+                                    <i class="bi bi-check-circle"></i> Confirmar
+                                </button>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-success">{{ venta.get_estado_display }}</span>
+                        {% endif %}
+                    </td>
                     <td class="fw-bold text-end">Gs. {{ venta.total|floatformat:2 }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="text-center py-4">No se encontraron ventas con los filtros aplicados.</td>
+                    <td colspan="6" class="text-center py-4">No se encontraron ventas con los filtros aplicados.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -170,7 +234,8 @@
 <!-- ============================================================
      MODAL: Detalle de venta (se llena por JS)
      ============================================================ -->
-<div class="modal fade" id="modalDetalleVenta" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalDetalleVenta" tabindex="-1" aria-hidden="true"
+     data-es-superuser="{% if user.is_superuser %}1{% else %}0{% endif %}">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content crud-modal">
       <div class="modal-header border-0">
@@ -191,6 +256,124 @@
   </div>
 </div>
 
+<!-- ============================================================
+     MODAL: Confirmar transferencia (custom, sin alert)
+     ============================================================ -->
+<div class="modal fade" id="modalConfirmarTransferencia" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content confirmar-venta-modal">
+      <div class="modal-header border-0">
+        <h4 class="modal-title">
+          <i class="bi bi-bank text-warning"></i> Confirmar transferencia
+        </h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">¿Confirmás que recibiste la transferencia?</p>
+        <div class="texto-secundario small">
+          <div><strong>Venta:</strong> <span id="conf-transf-venta-id">#</span></div>
+          <div><strong>Cliente:</strong> <span id="conf-transf-cliente">-</span></div>
+          <div><strong>Monto:</strong> <span id="conf-transf-monto" class="fw-bold text-success">Gs. 0</span></div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> Cancelar
+        </button>
+        <form id="formConfirmarTransferencia" method="POST" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success fw-bold">
+            <i class="bi bi-check-circle"></i> Sí, confirmar
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Anular venta (solo superusuarios)
+     ============================================================ -->
+<div class="modal fade" id="modalAnularVenta" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content crud-modal">
+      <div class="modal-header border-0" style="background-color: rgba(211,47,47,0.15);">
+        <h4 class="modal-title" style="color:#ff8a80;">
+          <i class="bi bi-x-octagon-fill"></i> Anular venta
+        </h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger mb-3">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <strong>Esta acción no se puede deshacer.</strong>
+          <div class="small mt-1">
+            La venta quedará marcada como anulada y se descontará de la deuda del cliente
+            (si corresponde). El cambio quedará registrado en la auditoría.
+          </div>
+        </div>
+
+        <div class="texto-secundario small mb-3">
+          <div><strong>Venta:</strong> <span id="anular-venta-id">#</span></div>
+          <div><strong>Cliente:</strong> <span id="anular-venta-cliente">-</span></div>
+          <div><strong>Forma de pago:</strong> <span id="anular-venta-forma-pago">-</span></div>
+          <div><strong>Total:</strong> <span id="anular-venta-total" class="fw-bold text-success">Gs. 0</span></div>
+        </div>
+
+        <div id="anular-error" class="alert alert-danger" style="display: none;"></div>
+
+        <form id="formAnularVenta" method="POST">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="anular-motivo" class="form-label fw-bold">
+              Motivo de la anulación <span class="text-danger">*</span>
+            </label>
+            <textarea id="anular-motivo" name="motivo" class="form-control" rows="3"
+                      placeholder="Ej: Cliente canceló el pedido, error de carga, etc."
+                      maxlength="300" required></textarea>
+            <small class="texto-secundario">Máximo 300 caracteres. Queda en la auditoría.</small>
+          </div>
+
+          <div class="modal-footer border-0 d-flex justify-content-between px-0 pb-0">
+            <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+              <i class="bi bi-arrow-left"></i> Cancelar
+            </button>
+            <button type="submit" class="btn btn-danger fw-bold" id="btnConfirmarAnulacion">
+              <i class="bi bi-x-octagon"></i> Sí, anular venta
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% load static %}
-<script src="{% static 'facturacion/js/venta_detalle_modal.js' %}?v=1"></script>
+<script src="{% static 'facturacion/js/venta_detalle_modal.js' %}?v=2"></script>
+
+<script>
+// ============================================================
+// Modal de confirmación de transferencia (custom, sin alert)
+// ============================================================
+document.addEventListener('DOMContentLoaded', function () {
+    const modalConfTransf = document.getElementById('modalConfirmarTransferencia');
+    if (!modalConfTransf) return;
+
+    modalConfTransf.addEventListener('show.bs.modal', function (event) {
+        const boton = event.relatedTarget;
+        if (!boton) return;
+
+        const ventaId = boton.getAttribute('data-venta-id');
+        const ventaTotal = boton.getAttribute('data-venta-total');
+        const ventaCliente = boton.getAttribute('data-venta-cliente');
+
+        document.getElementById('conf-transf-venta-id').textContent = '#' + ventaId;
+        document.getElementById('conf-transf-cliente').textContent = ventaCliente;
+        document.getElementById('conf-transf-monto').textContent = ventaTotal;
+
+        const form = document.getElementById('formConfirmarTransferencia');
+        form.action = '/ventas/' + ventaId + '/confirmar-transferencia/';
+    });
+});
+</script>
 {% endblock %}

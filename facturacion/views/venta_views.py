@@ -223,6 +223,8 @@ def buscar_productos(request):
         for p in productos
     ]
     return JsonResponse({'results': results})
+
+
 @login_required(login_url='login')
 def venta_detalle_api(request, venta_id):
     """Devuelve el detalle completo de una venta en JSON, para el modal."""
@@ -271,5 +273,63 @@ def venta_detalle_api(request, venta_id):
             'detalles': detalles,
             'items_manuales': manuales,
             'ticket_url': f'/ventas/{venta.id}/ticket/',
+            # Anulación
+            'anulada': venta.anulada,
+            'fecha_anulacion': venta.fecha_anulacion.strftime('%d/%m/%Y %H:%M') if venta.fecha_anulacion else None,
+            'anulada_por': venta.anulada_por.username if venta.anulada_por else None,
+            'motivo_anulacion': venta.motivo_anulacion or '',
+            'puede_anularse': venta.puede_anularse()[0],
+            'motivo_no_anulable': venta.puede_anularse()[1],
         }
     })
+
+
+@login_required(login_url='login')
+def anular_venta(request, venta_id):
+    """Anula una venta (borrado lógico).
+    - Solo superusuarios.
+    - Bloquea si la venta ya está anulada.
+    - Bloquea si es a crédito y ya tiene pagos.
+    - Si es a crédito sin pagos, resta el total de la deuda del cliente.
+    El cambio queda registrado automáticamente en la auditoría
+    (signal post_save de Venta).
+    """
+    if not request.user.is_superuser:
+        messages.error(request, 'Solo los superusuarios pueden anular ventas.')
+        return redirect('informes_ventas')
+
+    venta = get_object_or_404(Venta.objects.select_related('cliente'), pk=venta_id)
+
+    if request.method != 'POST':
+        return redirect('informes_ventas')
+
+    puede, motivo = venta.puede_anularse()
+    if not puede:
+        messages.error(request, motivo)
+        return redirect('informes_ventas')
+
+    motivo_anulacion = request.POST.get('motivo', '').strip()
+    if not motivo_anulacion:
+        messages.error(request, 'Tenés que indicar el motivo de la anulación.')
+        return redirect('informes_ventas')
+
+    with transaction.atomic():
+        # Si es a crédito sin pagos, restar la deuda del cliente
+        if venta.forma_pago == 'CREDITO':
+            cliente = venta.cliente
+            cliente.deuda -= venta.total
+            cliente.save(update_fields=['deuda'])
+
+        venta.anulada = True
+        venta.fecha_anulacion = timezone.now()
+        venta.anulada_por = request.user
+        venta.motivo_anulacion = motivo_anulacion[:300]
+        venta.save(update_fields=[
+            'anulada', 'fecha_anulacion', 'anulada_por', 'motivo_anulacion',
+        ])
+
+    messages.success(
+        request,
+        f'Venta #{venta.id} anulada. Motivo: {motivo_anulacion}'
+    )
+    return redirect('informes_ventas')

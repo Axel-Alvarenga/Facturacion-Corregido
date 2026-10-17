@@ -22,8 +22,16 @@ class PagoDeudaForm(forms.ModelForm):
         monto = self.cleaned_data['monto']
         if monto <= 0:
             raise forms.ValidationError('El monto a abonar debe ser mayor a cero.')
-        if self.cliente is not None and monto > self.cliente.deuda:
+
+        # Solo bloquear pago mayor a la deuda si el cliente NO es CREDITO.
+        # Los clientes CREDITO pueden tener saldo a favor.
+        if (
+            self.cliente is not None
+            and self.cliente.tipo_pago != 'CREDITO'
+            and monto > self.cliente.deuda
+        ):
             raise forms.ValidationError(
-                f'El monto no puede superar la deuda actual (Gs. {self.cliente.deuda}).'
+                f'El monto no puede superar la deuda actual '
+                f'(Gs. {self.cliente.deuda:,.0f}).'
             )
         return monto

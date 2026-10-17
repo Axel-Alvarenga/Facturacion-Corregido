@@ -54,6 +54,31 @@ class Venta(models.Model):
         related_name='ventas_confirmadas',
     )
 
+    # ---- Anulación (borrado lógico) ----
+    anulada = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name='Anulada',
+    )
+    fecha_anulacion = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de anulación',
+    )
+    anulada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ventas_anuladas',
+        verbose_name='Anulada por',
+    )
+    motivo_anulacion = models.CharField(
+        max_length=300,
+        blank=True,
+        verbose_name='Motivo de anulación',
+    )
+
     def __str__(self):
         return f"Venta {self.id} - {self.cliente.nombre}"
 
@@ -62,6 +87,22 @@ class Venta(models.Model):
 
     def tiene_vuelto(self):
         return self.vuelto is not None and self.vuelto > 0
+
+    def puede_anularse(self):
+        """Devuelve (bool, motivo) indicando si la venta se puede anular.
+        - No se puede si ya está anulada.
+        - No se puede si es a crédito y ya tiene pagos aplicados.
+        """
+        if self.anulada:
+            return False, 'Esta venta ya está anulada.'
+
+        if self.forma_pago == 'CREDITO' and self.pagos.exists():
+            return False, (
+                'No se puede anular: el cliente ya realizó pagos sobre esta '
+                'venta. Anulá primero los pagos desde "Pagar deuda".'
+            )
+
+        return True, ''
 
 
 class DetalleVenta(models.Model):

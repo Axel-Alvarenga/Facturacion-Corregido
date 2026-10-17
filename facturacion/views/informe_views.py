@@ -4,7 +4,7 @@ from django.db.models import Sum, Q
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
-from ..models import Cliente, Venta
+from ..models import Cliente, Venta, PagoDeuda
 
 
 # =============================================================================
@@ -17,7 +17,6 @@ def _clientes_filtrados_deudas(request):
     buscar = request.GET.get('buscar', '').strip()
     solo_con_deuda = request.GET.get('solo_con_deuda', '') == '1'
 
-    # Orden por Local primero, luego por Nombre
     clientes = Cliente.objects.all().order_by('nombre_local', 'nombre')
 
     if buscar:
@@ -45,7 +44,8 @@ def informes_deudas(request):
     total_clientes = Cliente.objects.count()
     clientes_con_deuda = Cliente.objects.filter(deuda__gt=0).count()
     monto_total_deuda = (
-        Cliente.objects.aggregate(t=Sum('deuda'))['t'] or Decimal('0.00')
+        Cliente.objects.filter(deuda__gt=0).aggregate(t=Sum('deuda'))['t']
+        or Decimal('0.00')
     )
 
     context = {
@@ -79,7 +79,7 @@ def informes_deudas_pdf(request):
 
     total_clientes_filtrados = len(clientes_lista)
     total_deuda_filtrada = sum(
-        (c.deuda for c in clientes_lista), Decimal('0.00')
+        (c.deuda for c in clientes_lista if c.deuda > 0), Decimal('0.00')
     )
 
     response = HttpResponse(content_type='application/pdf')
@@ -247,7 +247,8 @@ def informe_deuda_cliente_pdf(request, cliente_id):
     """Genera un PDF con el detalle de deuda de un cliente:
     - Datos del cliente (nombre, local, teléfono, frecuencia de pago)
     - Deuda actual
-    - Historial de ventas a crédito con el detalle de productos
+    - Historial de ventas a crédito NO anuladas con el detalle de productos
+    - Saldo pendiente real por venta (descontando pagos FIFO)
     """
     from reportlab.lib.pagesizes import legal
     from reportlab.lib.units import mm
@@ -262,8 +263,8 @@ def informe_deuda_cliente_pdf(request, cliente_id):
 
     ventas_credito = (
         Venta.objects
-        .filter(cliente=cliente, forma_pago='CREDITO')
-        .prefetch_related('detalles__producto', 'items_manuales')
+        .filter(cliente=cliente, forma_pago='CREDITO', anulada=False)
+        .prefetch_related('detalles__producto', 'items_manuales', 'pagos')
         .order_by('-fecha')
     )
     ventas_lista = list(ventas_credito)
@@ -422,7 +423,7 @@ def informe_deuda_cliente_pdf(request, cliente_id):
 
     elementos.append(Spacer(1, 12))
 
-    # ---- Historial de ventas a crédito ----
+    # ---- Historial de ventas a crédito NO anuladas ----
     elementos.append(Paragraph(
         '<b>Historial de ventas a crédito</b>', estilo_seccion
     ))
@@ -438,7 +439,11 @@ def informe_deuda_cliente_pdf(request, cliente_id):
             Paragraph('<b>Fecha</b>', estilo_celda_bold_centro),
             Paragraph('<b>Productos</b>', estilo_celda_bold),
             Paragraph('<b>Total</b>', estilo_celda_bold_right),
+            Paragraph('<b>Pagado</b>', estilo_celda_bold_right),
+            Paragraph('<b>Pendiente</b>', estilo_celda_bold_right),
         ]]
+
+        total_pendiente = Decimal('0.00')
 
         for v in ventas_lista:
             items_texto = []
@@ -459,6 +464,12 @@ def informe_deuda_cliente_pdf(request, cliente_id):
                 t.replace(',', '.') for t in items_texto
             )
 
+            pagado_venta = sum((p.monto for p in v.pagos.all()), Decimal('0.00'))
+            pendiente_venta = v.total - pagado_venta
+            if pendiente_venta < 0:
+                pendiente_venta = Decimal('0.00')
+            total_pendiente += pendiente_venta
+
             data.append([
                 Paragraph(str(v.id), estilo_celda_centro),
                 Paragraph(v.fecha.strftime('%d/%m/%Y'), estilo_celda_centro),
@@ -467,17 +478,28 @@ def informe_deuda_cliente_pdf(request, cliente_id):
                     f'{v.total:,.0f}'.replace(',', '.'),
                     estilo_celda_right
                 ),
+                Paragraph(
+                    f'{pagado_venta:,.0f}'.replace(',', '.'),
+                    estilo_celda_right
+                ),
+                Paragraph(
+                    f'{pendiente_venta:,.0f}'.replace(',', '.'),
+                    estilo_celda_right
+                ),
             ])
 
-        total_texto = f'{total_historico:,.0f}'.replace(',', '.')
+        total_hist_texto = f'{total_historico:,.0f}'.replace(',', '.')
+        total_pend_texto = f'{total_pendiente:,.0f}'.replace(',', '.')
         data.append([
             Paragraph('', estilo_celda),
             Paragraph('', estilo_celda),
-            Paragraph('<b>TOTAL HISTÓRICO A CRÉDITO</b>', estilo_celda_bold_right),
-            Paragraph(f'<b>{total_texto}</b>', estilo_celda_bold_right),
+            Paragraph('<b>TOTALES</b>', estilo_celda_bold_right),
+            Paragraph(f'<b>{total_hist_texto}</b>', estilo_celda_bold_right),
+            Paragraph('', estilo_celda_bold_right),
+            Paragraph(f'<b>{total_pend_texto}</b>', estilo_celda_bold_right),
         ])
 
-        col_widths = [14 * mm, 24 * mm, 112 * mm, 24 * mm]
+        col_widths = [12 * mm, 20 * mm, 88 * mm, 22 * mm, 20 * mm, 22 * mm]
         tabla = Table(data, colWidths=col_widths, repeatRows=1)
 
         estilos_tabla = [
@@ -504,8 +526,9 @@ def informe_deuda_cliente_pdf(request, cliente_id):
 
     elementos.append(Spacer(1, 8))
     elementos.append(Paragraph(
-        'Nota: el historial muestra todas las ventas a crédito del cliente. '
-        'La deuda actual puede ser menor si hubo pagos parciales.',
+        'Nota: el historial muestra todas las ventas a crédito vigentes del cliente '
+        '(las ventas anuladas no se incluyen). La columna "Pendiente" refleja el '
+        'saldo real después de aplicar los pagos.',
         estilo_pie
     ))
 
@@ -517,9 +540,15 @@ def informe_deuda_cliente_pdf(request, cliente_id):
 # INFORMES - PESTAÑA 2: Ventas del período
 # =============================================================================
 
-def _ventas_filtradas(request):
-    """Aplica los filtros de la pestaña de ventas."""
+def _ventas_filtradas(request, incluir_anuladas=True):
+    """Aplica los filtros de la pestaña de ventas.
+    Por defecto incluye las ventas anuladas (para que el superusuario las vea).
+    Los KPIs y resumen por forma de pago se calculan aparte, excluyéndolas.
+    """
     ventas = Venta.objects.select_related('cliente').all().order_by('-fecha')
+
+    if not incluir_anuladas:
+        ventas = ventas.filter(anulada=False)
 
     cliente_query = request.GET.get('cliente', '').strip()
     forma_pago_query = request.GET.get('forma_pago', '').strip()
@@ -548,35 +577,131 @@ def _ventas_filtradas(request):
     return ventas, filtros
 
 
+def _pagos_filtrados(request):
+    """Aplica los mismos filtros de fecha a los PagoDeuda del período.
+    Solo considera pagos que apuntan a ventas NO anuladas (o pagos a cuenta
+    sin venta, que no se anularon).
+    """
+    pagos = (
+        PagoDeuda.objects
+        .select_related('cliente', 'venta')
+        .filter(Q(venta__isnull=True) | Q(venta__anulada=False))
+    )
+
+    fecha_desde_query = request.GET.get('fecha_desde', '').strip()
+    fecha_hasta_query = request.GET.get('fecha_hasta', '').strip()
+    cliente_query = request.GET.get('cliente', '').strip()
+
+    if fecha_desde_query:
+        pagos = pagos.filter(fecha__date__gte=fecha_desde_query)
+    if fecha_hasta_query:
+        pagos = pagos.filter(fecha__date__lte=fecha_hasta_query)
+    if cliente_query:
+        pagos = pagos.filter(cliente__nombre__icontains=cliente_query)
+
+    return pagos
+
+
 @login_required(login_url='login')
 def informes_ventas(request):
-    """Pestaña de informes centrada en las ventas del período."""
-    ventas, filtros = _ventas_filtradas(request)
+    """Pestaña de informes centrada en las ventas del período.
+    - La TABLA muestra todas las ventas (incluidas las anuladas, con badge).
+    - Los KPIs y el resumen por forma de pago EXCLUYEN las anuladas.
+    """
+    # Tabla: incluye anuladas (para que el superusuario las vea)
+    ventas, filtros = _ventas_filtradas(request, incluir_anuladas=True)
+    ventas_lista = list(ventas)
 
-    total_filtrado = sum(v.total for v in ventas)
-    cantidad_filtrada = ventas.count()
+    # Para KPIs y resumen: solo no anuladas
+    ventas_vigentes = [v for v in ventas_lista if not v.anulada]
+
+    # Pagos del período (solo de ventas no anuladas)
+    pagos = _pagos_filtrados(request)
+    pagos_lista = list(pagos)
+
+    total_filtrado = sum((v.total for v in ventas_vigentes), Decimal('0.00'))
+    cantidad_filtrada = len(ventas_vigentes)
     ticket_promedio = (
         total_filtrado / cantidad_filtrada if cantidad_filtrada
         else Decimal('0.00')
     )
 
-    formas = dict(Venta._meta.get_field('forma_pago').choices)
-    resumen_forma_pago = {codigo: Decimal('0.00') for codigo in formas}
-    for fila in ventas.values('forma_pago').annotate(total=Sum('total')):
-        resumen_forma_pago[fila['forma_pago']] = fila['total'] or Decimal('0.00')
+    # ============ COBRADO vs PENDIENTE ============
+    # Efectivo: siempre cobrado
+    efectivo_total = sum(
+        (v.total for v in ventas_vigentes if v.forma_pago == 'EFECTIVO'),
+        Decimal('0.00'),
+    )
+
+    # Transferencias: depende del estado
+    transferencias_cobradas = sum(
+        (v.total for v in ventas_vigentes
+         if v.forma_pago == 'TRANSFERENCIA' and v.estado == 'CONFIRMADA'),
+        Decimal('0.00'),
+    )
+    transferencias_pendientes = sum(
+        (v.total for v in ventas_vigentes
+         if v.forma_pago == 'TRANSFERENCIA' and v.estado == 'PENDIENTE'),
+        Decimal('0.00'),
+    )
+
+    # Crédito del período (solo ventas vigentes)
+    credito_total = sum(
+        (v.total for v in ventas_vigentes if v.forma_pago == 'CREDITO'),
+        Decimal('0.00'),
+    )
+
+    # Pendiente = crédito del período - pagos aplicados a esas ventas
+    venta_ids_credito = {v.id for v in ventas_vigentes if v.forma_pago == 'CREDITO'}
+    pagos_credito_ventas = sum(
+        (p.monto for p in pagos_lista if p.venta_id in venta_ids_credito),
+        Decimal('0.00'),
+    )
+    credito_pendiente = credito_total - pagos_credito_ventas
+    if credito_pendiente < 0:
+        credito_pendiente = Decimal('0.00')
+
+    # Cobrado del crédito = TODOS los pagos del período (aunque sean de
+    # ventas de otros períodos). Es plata que entró en el período.
+    credito_cobrado = sum(
+        (p.monto for p in pagos_lista),
+        Decimal('0.00'),
+    )
+
+    # Totales
+    total_cobrado = efectivo_total + transferencias_cobradas + credito_cobrado
+    total_pendiente = credito_pendiente + transferencias_pendientes
+
+    # Resumen por forma de pago
+    resumen_forma_pago = {
+        'EFECTIVO': {
+            'cobrado': efectivo_total,
+            'pendiente': Decimal('0.00'),
+        },
+        'CREDITO': {
+            'cobrado': credito_cobrado,
+            'pendiente': credito_pendiente,
+        },
+        'TRANSFERENCIA': {
+            'cobrado': transferencias_cobradas,
+            'pendiente': transferencias_pendientes,
+        },
+    }
 
     transferencias_pendientes_count = Venta.objects.filter(
-        forma_pago='TRANSFERENCIA', estado='PENDIENTE'
+        forma_pago='TRANSFERENCIA', estado='PENDIENTE', anulada=False
     ).count()
 
     hoy = timezone.localdate()
 
     context = {
         'pestaña_activa': 'ventas',
-        'ventas': ventas,
+        'ventas': ventas_lista,
         'total_filtrado': total_filtrado,
         'cantidad_filtrada': cantidad_filtrada,
         'ticket_promedio': ticket_promedio,
+        'total_cobrado': total_cobrado,
+        'total_pendiente': total_pendiente,
         'resumen_forma_pago': resumen_forma_pago,
         'transferencias_pendientes_count': transferencias_pendientes_count,
         'hoy': hoy.isoformat(),
@@ -596,13 +721,16 @@ def informes_export_excel(request):
     from openpyxl.styles import Font, PatternFill, Alignment
     from openpyxl.utils import get_column_letter
 
-    ventas, _ = _ventas_filtradas(request)
+    ventas, _ = _ventas_filtradas(request, incluir_anuladas=True)
 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Informe de ventas'
 
-    encabezados = ['# Venta', 'Cliente', 'Local', 'Fecha', 'Forma de pago', 'Estado', 'Total (Gs.)']
+    encabezados = [
+        '# Venta', 'Cliente', 'Local', 'Fecha', 'Forma de pago',
+        'Estado', 'Anulada', 'Total (Gs.)',
+    ]
     ws.append(encabezados)
 
     relleno_encabezado = PatternFill(start_color='16232C', end_color='16232C', fill_type='solid')
@@ -623,15 +751,16 @@ def informes_export_excel(request):
             v.fecha.strftime('%d/%m/%Y %H:%M'),
             v.get_forma_pago_display(),
             v.get_estado_display(),
+            'Sí' if v.anulada else 'No',
             float(v.total),
         ])
 
     if fila > 1:
         fila_total = fila + 1
-        ws.cell(row=fila_total, column=6, value='TOTAL').font = Font(bold=True)
-        ws.cell(row=fila_total, column=7, value=f'=SUM(G2:G{fila})').font = Font(bold=True)
+        ws.cell(row=fila_total, column=7, value='TOTAL').font = Font(bold=True)
+        ws.cell(row=fila_total, column=8, value=f'=SUM(H2:H{fila})').font = Font(bold=True)
 
-    anchos = [10, 25, 18, 18, 16, 16, 16]
+    anchos = [10, 25, 18, 18, 16, 16, 10, 16]
     for i, ancho in enumerate(anchos, start=1):
         ws.column_dimensions[get_column_letter(i)].width = ancho
 

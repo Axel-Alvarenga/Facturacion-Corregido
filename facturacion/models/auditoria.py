@@ -12,6 +12,7 @@ class RegistroAuditoria(models.Model):
         ('ELIMINAR', 'Eliminar'),
         ('LOGIN', 'Inicio de sesión'),
         ('LOGOUT', 'Cierre de sesión'),
+        ('LOGIN_FALLIDO', 'Intento de login fallido'),
     ]
 
     fecha = models.DateTimeField(auto_now_add=True, db_index=True)

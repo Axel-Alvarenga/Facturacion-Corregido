@@ -8,7 +8,7 @@ from .producto_views import (
 )
 from .venta_views import (
     crear_venta, confirmar_transferencia, venta_confirmada,
-    ticket_venta, buscar_productos, venta_detalle_api,
+    ticket_venta, buscar_productos, venta_detalle_api, anular_venta,
 )
 from .pedido_views import (
     pedido_create, pedido_list, pedido_actualizar_estado,
@@ -30,7 +30,7 @@ __all__ = [
     'cliente_list', 'cliente_create', 'cliente_update', 'cliente_delete', 'pagar_deuda',
     'producto_list', 'producto_create', 'producto_update', 'producto_delete',
     'crear_venta', 'confirmar_transferencia', 'venta_confirmada',
-    'ticket_venta', 'buscar_productos', 'venta_detalle_api',
+    'ticket_venta', 'buscar_productos', 'venta_detalle_api', 'anular_venta',
     'pedido_create', 'pedido_list', 'pedido_actualizar_estado',
     'informes_deudas', 'informes_deudas_pdf', 'informe_deuda_cliente_pdf',
     'informes_ventas', 'informes_export_excel',

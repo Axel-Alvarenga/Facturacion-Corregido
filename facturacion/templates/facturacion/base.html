@@ -140,7 +140,8 @@
     "producto_list":   "{% url 'producto_list' %}",
     "producto_create": "{% url 'producto_create' %}",
     "informes":        "{% url 'informes' %}",
-    "venta_detalle_api": "{% url 'venta_detalle_api' venta_id=0 %}"
+    "venta_detalle_api": "{% url 'venta_detalle_api' venta_id=0 %}",
+    "anular_venta":      "{% url 'anular_venta' venta_id=0 %}"
 }
 </script>
 
@@ -150,7 +151,8 @@
     "minutosAntes": {{ AVISO_CIERRE_MINUTOS_ANTES|default:5 }},
     "urlLogout":    "{% url 'logout' %}",
     "urlExtender":  "{% url 'extender_sesion' %}",
-    "csrfToken":    "{{ csrf_token }}"
+    "csrfToken":    "{{ csrf_token }}",
+    "extensionHasta": "{{ EXTENSION_HASTA|default:'' }}"
 }
 </script>
 
@@ -161,7 +163,7 @@
 <script src="{% static 'facturacion/js/config_global.js' %}?v=1"></script>
 <script src="{% static 'facturacion/js/toasts.js' %}?v=1"></script>
 <script src="{% static 'facturacion/js/atajos.js' %}?v=3"></script>
-<script src="{% static 'facturacion/js/cierre_automatico.js' %}?v=1"></script>
+<script src="{% static 'facturacion/js/cierre_automatico.js' %}?v=2"></script>
 {% endif %}
 </body>
 </html>

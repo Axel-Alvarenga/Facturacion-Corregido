@@ -3,6 +3,7 @@
    - Avisa X minutos antes de la hora de cierre.
    - Permite extender la sesión por X minutos.
    - Cierra sesión al llegar la hora.
+   - Respeta la extensión activa al navegar entre módulos.
    ========================================================= */
 
 (function () {
@@ -15,14 +16,35 @@
     const URL_LOGOUT = config.urlLogout || '/logout/';
     const URL_EXTENDER = config.urlExtender || '/extender-sesion/';
     const CSRF_TOKEN = config.csrfToken || '';
+    const EXTENSION_HASTA_STR = config.extensionHasta || '';
 
     let avisoMostrado = false;
+    let timeoutAviso = null;
+
+    // Parsear la extensión activa (si existe)
+    let extensionHasta = null;
+    if (EXTENSION_HASTA_STR) {
+        const d = new Date(EXTENSION_HASTA_STR);
+        if (!isNaN(d.getTime())) {
+            extensionHasta = d;
+        }
+    }
 
     function minutosParaCierre() {
         const ahora = new Date();
         const cierre = new Date();
         cierre.setHours(HORA_CIERRE, 0, 0, 0);
         return Math.round((cierre - ahora) / 60000);
+    }
+
+    function hayExtensionActiva() {
+        if (!extensionHasta) return false;
+        return new Date() < extensionHasta;
+    }
+
+    function minutosParaFinExtension() {
+        if (!extensionHasta) return 0;
+        return Math.round((extensionHasta - new Date()) / 60000);
     }
 
     function cerrarSesionAhora() {
@@ -52,7 +74,16 @@
             if (data.ok) {
                 avisoMostrado = false;
                 modal.hide();
-                programarAviso(data.minutos);
+
+                // Actualizar extensionHasta local con la nueva hora
+                if (data.extension_hasta) {
+                    const d = new Date(data.extension_hasta);
+                    if (!isNaN(d.getTime())) {
+                        extensionHasta = d;
+                    }
+                }
+
+                programarAviso();
             }
         })
         .catch(err => {
@@ -63,9 +94,20 @@
 
     function mostrarAviso() {
         if (avisoMostrado) return;
-        avisoMostrado = true;
+
+        // Si hay extensión activa, no mostrar aviso: reprogramar
+        if (hayExtensionActiva()) {
+            programarAviso();
+            return;
+        }
 
         const minutos = minutosParaCierre();
+
+        // Si ya pasó la hora de cierre, no mostrar aviso
+        if (minutos <= 0) return;
+
+        avisoMostrado = true;
+
         const modalHtml = `
             <div class="modal fade" id="modalAvisoCierre" tabindex="-1" data-bs-backdrop="static">
               <div class="modal-dialog modal-dialog-centered">
@@ -118,22 +160,42 @@
         });
     }
 
-    function programarAviso(minutosExtra) {
-        const minutos = minutosExtra || minutosParaCierre() - MINUTOS_ANTES;
+    function programarAviso() {
+        // Limpiar timeout previo
+        if (timeoutAviso) {
+            clearTimeout(timeoutAviso);
+            timeoutAviso = null;
+        }
+
+        // Si hay extensión activa, programar para cuando termine
+        if (hayExtensionActiva()) {
+            const minutosExt = minutosParaFinExtension();
+            if (minutosExt > 0) {
+                timeoutAviso = setTimeout(mostrarAviso, minutosExt * 60 * 1000);
+                return;
+            }
+        }
+
+        // Sin extensión: calcular cuándo avisar
+        const minutos = minutosParaCierre();
+
         if (minutos <= 0) {
+            // Ya pasó la hora de cierre, no hacer nada
+            return;
+        }
+
+        if (minutos <= MINUTOS_ANTES) {
+            // Estamos dentro de la ventana de aviso → mostrar ya
             mostrarAviso();
             return;
         }
-        setTimeout(mostrarAviso, minutos * 60 * 1000);
+
+        // Programar para cuando falten MINUTOS_ANTES
+        const tiempoHastaAviso = (minutos - MINUTOS_ANTES) * 60 * 1000;
+        timeoutAviso = setTimeout(mostrarAviso, tiempoHastaAviso);
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        const minutos = minutosParaCierre();
-        if (minutos <= MINUTOS_ANTES && minutos > 0) {
-            mostrarAviso();
-        } else if (minutos > MINUTOS_ANTES) {
-            const tiempoHastaAviso = (minutos - MINUTOS_ANTES) * 60 * 1000;
-            setTimeout(mostrarAviso, tiempoHastaAviso);
-        }
+        programarAviso();
     });
 })();

@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
-from ..models import Cliente, PagoDeuda
+from ..models import Cliente, PagoDeuda, Venta
 from ..forms import ClienteForm, PagoDeudaForm
 
 
@@ -41,7 +41,7 @@ def _contexto_lista(request, form_modal=None, modal_activo=None, objeto_editar=N
         'clientes': clientes,
         'total_clientes': clientes.count(),
         'clientes_con_deuda': clientes.filter(deuda__gt=0).count(),
-        'monto_total_deuda': clientes.aggregate(total=Sum('deuda'))['total'] or Decimal('0.00'),
+        'monto_total_deuda': clientes.filter(deuda__gt=0).aggregate(total=Sum('deuda'))['total'] or Decimal('0.00'),
         'error_eliminar': error_eliminar,
         'modal_activo': modal_activo,
         'form_modal': form_modal,
@@ -210,15 +210,37 @@ def pagar_deuda(request, cliente_id):
     if request.method == 'POST':
         form = PagoDeudaForm(request.POST, cliente=cliente)
         if form.is_valid():
+            monto_pago = form.cleaned_data['monto']
+
+            # Validar saldo a favor: solo clientes CREDITO pueden pagar de más
+            if monto_pago > cliente.deuda and cliente.tipo_pago != 'CREDITO':
+                messages.error(
+                    request,
+                    f'El monto (Gs. {monto_pago:,.0f}) supera la deuda actual '
+                    f'(Gs. {cliente.deuda:,.0f}). Solo los clientes con '
+                    f'preferencia "Crédito" pueden tener saldo a favor.'
+                )
+                return render(
+                    request,
+                    'facturacion/clientes/cliente_pagar_deuda.html',
+                    {
+                        'cliente': cliente,
+                        'form': form,
+                        'historial_pagos': cliente.pagos.all().order_by('-fecha'),
+                    },
+                )
+
             with transaction.atomic():
-                pago = form.save(commit=False)
-                pago.cliente = cliente
-                pago.save()
-                cliente.deuda -= pago.monto
+                # Aplicar FIFO a las ventas a crédito con saldo pendiente
+                _aplicar_pago_fifo(cliente, monto_pago, request.user)
+
+                # Actualizar la deuda del cliente (puede quedar negativa si es CREDITO)
+                cliente.deuda -= monto_pago
                 cliente.save(update_fields=['deuda'])
+
             messages.success(
                 request,
-                f'Pago de Gs. {pago.monto:,.0f} registrado para {cliente.nombre}.'
+                f'Pago de Gs. {monto_pago:,.0f} registrado para {cliente.nombre}.'
             )
             return redirect('cliente_list')
     else:
@@ -230,6 +252,59 @@ def pagar_deuda(request, cliente_id):
         'form': form,
         'historial_pagos': historial_pagos,
     })
+
+
+def _aplicar_pago_fifo(cliente, monto_total, usuario):
+    """Aplica un pago a las ventas a crédito del cliente en orden FIFO.
+    Crea un PagoDeuda por cada venta afectada.
+    Si sobra monto después de cubrir todas las ventas, se registra
+    como un PagoDeuda sin venta (saldo a favor).
+    """
+    monto_restante = Decimal(monto_total)
+
+    # Traer ventas a crédito con saldo pendiente, ordenadas por fecha ASC
+    ventas_credito = (
+        Venta.objects
+        .filter(cliente=cliente, forma_pago='CREDITO')
+        .order_by('fecha')
+    )
+
+    for venta in ventas_credito:
+        if monto_restante <= 0:
+            break
+
+        # Calcular saldo pendiente de esta venta
+        pagado_venta = (
+            PagoDeuda.objects
+            .filter(venta=venta)
+            .aggregate(total=Sum('monto'))['total']
+            or Decimal('0.00')
+        )
+        saldo_venta = venta.total - pagado_venta
+
+        if saldo_venta <= 0:
+            continue  # esta venta ya está saldada
+
+        monto_aplicar = min(monto_restante, saldo_venta)
+
+        PagoDeuda.objects.create(
+            cliente=cliente,
+            venta=venta,
+            monto=monto_aplicar,
+            registrado_por=usuario,
+        )
+
+        monto_restante -= monto_aplicar
+
+    # Si sobró monto (cliente CREDITO pagó de más), registrar saldo a favor
+    if monto_restante > 0:
+        PagoDeuda.objects.create(
+            cliente=cliente,
+            venta=None,
+            monto=monto_restante,
+            registrado_por=usuario,
+            observacion='Saldo a favor (pago mayor a la deuda)',
+        )
 
 
 def _form_errors_to_dict(form):

@@ -3,6 +3,7 @@
    - Escucha clics en filas [data-venta-id]
    - Hace fetch() a venta_detalle_api
    - Llena el modal y lo muestra
+   - Botón "Anular venta" (solo superusuarios)
    ========================================================= */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -11,20 +12,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const modalBody  = modalEl.querySelector('.modal-body');
     const modalTitle = modalEl.querySelector('.modal-title');
+    const modalFooter = modalEl.querySelector('.modal-footer');
     const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
 
     // URLs globales (inyectadas por config_global.js desde #arm-config-urls)
     const urls = window.__ARM_URLS__ || {};
     const urlTemplate = urls.venta_detalle_api || null;
+    const urlAnularTemplate = urls.anular_venta || null;
 
     if (!urlTemplate) {
         console.warn('[venta_detalle_modal] Falta venta_detalle_api en #arm-config-urls');
         return;
     }
 
+    // ID de la venta actualmente abierta en el modal
+    let ventaActualId = null;
+    let ventaActualData = null;
+
     function urlDetalle(ventaId) {
-        // La URL llega como /ventas/0/detalle/ → reemplazamos el 0 por el id real
         return urlTemplate.replace(/\/0\/detalle\/?$/, `/${ventaId}/detalle/`);
+    }
+
+    function urlAnular(ventaId) {
+        if (!urlAnularTemplate) return null;
+        return urlAnularTemplate.replace(/\/0\/anular\/?$/, `/${ventaId}/anular/`);
     }
 
     function esc(str) {
@@ -36,9 +47,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderDetalle(v) {
+        ventaActualId = v.id;
+        ventaActualData = v;
+
         const badgeEstado = v.estado_raw === 'PENDIENTE'
             ? `<span class="badge bg-warning text-dark">${esc(v.estado)}</span>`
             : `<span class="badge bg-success">${esc(v.estado)}</span>`;
+
+        const badgeAnulada = v.anulada
+            ? `<span class="badge bg-danger ms-2">ANULADA</span>`
+            : '';
 
         let html = `
             <div class="row g-2 mb-3">
@@ -57,10 +75,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
                 <div class="col-sm-6 text-sm-end">
                     <div class="kpi-label">Estado</div>
-                    <div>${badgeEstado}</div>
+                    <div>${badgeEstado}${badgeAnulada}</div>
                 </div>
             </div>
         `;
+
+        if (v.anulada) {
+            html += `
+                <div class="alert alert-danger mb-3">
+                    <i class="bi bi-x-octagon-fill"></i>
+                    <strong>Venta anulada</strong>
+                    ${v.fecha_anulacion ? `<div class="small mt-1">Fecha: ${esc(v.fecha_anulacion)}</div>` : ''}
+                    ${v.anulada_por ? `<div class="small">Por: ${esc(v.anulada_por)}</div>` : ''}
+                    ${v.motivo_anulacion ? `<div class="small">Motivo: ${esc(v.motivo_anulacion)}</div>` : ''}
+                </div>
+            `;
+        }
 
         const hayProductos = Array.isArray(v.detalles) && v.detalles.length > 0;
         const hayManuales  = Array.isArray(v.items_manuales) && v.items_manuales.length > 0;
@@ -137,6 +167,56 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         modalBody.innerHTML = html;
+
+        // ---- Footer dinámico: botón Anular (solo superusuarios) ----
+        renderFooter(v);
+    }
+
+    function renderFooter(v) {
+        // El footer original tiene solo el botón "Cerrar".
+        // Si el usuario es superusuario y la venta se puede anular, agregamos
+        // el botón "Anular venta" a la izquierda.
+        const esSuper = modalEl.dataset.esSuperuser === '1';
+
+        let html = '';
+
+        if (esSuper && v.puede_anularse && !v.anulada) {
+            html += `
+                <button type="button" class="btn btn-danger fw-bold me-auto"
+                        id="btnAnularVenta"
+                        data-venta-id="${v.id}">
+                    <i class="bi bi-x-octagon"></i> Anular venta
+                </button>
+            `;
+        } else if (esSuper && v.anulada) {
+            html += `
+                <span class="texto-secundario small me-auto">
+                    <i class="bi bi-info-circle"></i> Esta venta ya fue anulada
+                </span>
+            `;
+        } else if (esSuper && !v.puede_anularse && v.motivo_no_anulable) {
+            html += `
+                <span class="texto-secundario small me-auto" title="${esc(v.motivo_no_anulable)}">
+                    <i class="bi bi-lock"></i> No anulable: ${esc(v.motivo_no_anulable)}
+                </span>
+            `;
+        }
+
+        html += `
+            <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+                <i class="bi bi-x-circle"></i> Cerrar
+            </button>
+        `;
+
+        modalFooter.innerHTML = html;
+
+        // Listener del botón "Anular venta"
+        const btnAnular = modalFooter.querySelector('#btnAnularVenta');
+        if (btnAnular) {
+            btnAnular.addEventListener('click', function () {
+                abrirModalAnulacion(v);
+            });
+        }
     }
 
     async function abrirDetalle(ventaId) {
@@ -148,6 +228,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="spinner-border text-warning" role="status"></div>
                 <div class="texto-secundario small mt-2">Cargando detalle…</div>
             </div>
+        `;
+        // Footer provisorio (solo Cerrar) mientras carga
+        modalFooter.innerHTML = `
+            <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+                <i class="bi bi-x-circle"></i> Cerrar
+            </button>
         `;
         modalInstance.show();
 
@@ -172,6 +258,106 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // ============================================================
+    // Modal de confirmación de anulación
+    // ============================================================
+    function abrirModalAnulacion(venta) {
+        // Ocultar el modal de detalle para no superponer
+        modalInstance.hide();
+
+        const modalAnularEl = document.getElementById('modalAnularVenta');
+        if (!modalAnularEl) {
+            alert('Falta el modal #modalAnularVenta en el template.');
+            return;
+        }
+
+        // Rellenar datos
+        document.getElementById('anular-venta-id').textContent = '#' + venta.id;
+        document.getElementById('anular-venta-cliente').textContent = venta.cliente;
+        document.getElementById('anular-venta-total').textContent = 'Gs. ' + venta.total_fmt;
+        document.getElementById('anular-venta-forma-pago').textContent = venta.forma_pago;
+
+        const form = document.getElementById('formAnularVenta');
+        const motivoInput = document.getElementById('anular-motivo');
+        const errorDiv = document.getElementById('anular-error');
+        const btnConfirmar = document.getElementById('btnConfirmarAnulacion');
+
+        motivoInput.value = '';
+        errorDiv.style.display = 'none';
+        btnConfirmar.disabled = false;
+        btnConfirmar.innerHTML = '<i class="bi bi-x-octagon"></i> Sí, anular venta';
+
+        const urlAnularFinal = urlAnular(venta.id);
+        form.action = urlAnularFinal;
+
+        // Listener de submit (una sola vez por apertura)
+        // Removemos listeners previos clonando el form o usando onsubmit
+        form.onsubmit = function (e) {
+            e.preventDefault();
+
+            const motivo = motivoInput.value.trim();
+            if (!motivo) {
+                errorDiv.textContent = 'Tenés que indicar el motivo de la anulación.';
+                errorDiv.style.display = 'block';
+                motivoInput.focus();
+                return;
+            }
+
+            btnConfirmar.disabled = true;
+            btnConfirmar.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Anulando...';
+
+            const formData = new FormData(form);
+
+            fetch(urlAnularFinal, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            })
+            .then(async (res) => {
+                // Si es redirect (302), el navegador lo sigue automáticamente
+                // y devuelve HTML. En ese caso, redirigimos al informe.
+                if (res.redirected) {
+                    window.location.href = res.url;
+                    return null;
+                }
+                // Si devuelve JSON, lo parseamos
+                const text = await res.text();
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return { ok: false, error: 'Respuesta inesperada del servidor.' };
+                }
+            })
+            .then((data) => {
+                if (data === null) return; // ya se redirigió
+                if (data && data.ok) {
+                    window.location.href = '/informes/ventas/';
+                } else {
+                    errorDiv.textContent = (data && data.error) || 'No se pudo anular la venta.';
+                    errorDiv.style.display = 'block';
+                    btnConfirmar.disabled = false;
+                    btnConfirmar.innerHTML = '<i class="bi bi-x-octagon"></i> Sí, anular venta';
+                }
+            })
+            .catch((err) => {
+                console.error(err);
+                errorDiv.textContent = 'Error de conexión. Revisá tu red e intentá de nuevo.';
+                errorDiv.style.display = 'block';
+                btnConfirmar.disabled = false;
+                btnConfirmar.innerHTML = '<i class="bi bi-x-octagon"></i> Sí, anular venta';
+            });
+        };
+
+        const modalAnular = bootstrap.Modal.getOrCreateInstance(modalAnularEl);
+        modalAnular.show();
+
+        // Foco en el motivo
+        modalAnularEl.addEventListener('shown.bs.modal', function () {
+            motivoInput.focus();
+        }, { once: true });
+    }
+
     // Delegación: cualquier clic en <tr data-venta-id>
     document.addEventListener('click', function (ev) {
         const fila = ev.target.closest('tr[data-venta-id]');
@@ -184,5 +370,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Limpiar al cerrar
     modalEl.addEventListener('hidden.bs.modal', function () {
         modalBody.innerHTML = '';
+        ventaActualId = null;
+        ventaActualData = null;
     });
 });
