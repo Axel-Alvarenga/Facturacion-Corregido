@@ -12,11 +12,13 @@ from ..models import Cliente, Venta
 # =============================================================================
 
 def _clientes_filtrados_deudas(request):
-    """Aplica los filtros de la pestaña de deudas (reusable por el PDF)."""
+    """Aplica los filtros de la pestaña de deudas (reusable por el PDF).
+    Ordena por nombre_local (alfabético) y luego por nombre."""
     buscar = request.GET.get('buscar', '').strip()
     solo_con_deuda = request.GET.get('solo_con_deuda', '') == '1'
 
-    clientes = Cliente.objects.all().order_by('nombre', 'nombre_local')
+    # ✅ ORDEN POR LOCAL PRIMERO, LUEGO POR NOMBRE
+    clientes = Cliente.objects.all().order_by('nombre_local', 'nombre')
 
     if buscar:
         clientes = clientes.filter(
@@ -61,7 +63,8 @@ def informes_deudas(request):
 @login_required(login_url='login')
 def informes_deudas_pdf(request):
     """Genera un PDF en hoja Oficio vertical, sin colores (para imprimir
-    en blanco y negro). Incluye columnas en blanco para completar a mano."""
+    en blanco y negro). Incluye columnas en blanco para completar a mano.
+    El orden de la lista es por nombre_local y luego por nombre."""
     from reportlab.lib.pagesizes import legal
     from reportlab.lib.units import mm
     from reportlab.lib import colors
@@ -149,6 +152,7 @@ def informes_deudas_pdf(request):
         estilo_subtitulo
     ))
 
+    # Columnas como estaban antes (sin "Local" separado)
     data = [[
         Paragraph('<b>Nombre</b>', estilo_celda_bold),
         Paragraph('<b>Frecuencia</b>', estilo_celda_bold_centro),
@@ -160,6 +164,7 @@ def informes_deudas_pdf(request):
     ]]
 
     for c in clientes_lista:
+        # Nombre con local entre paréntesis como antes
         nombre_con_local = c.nombre
         if c.nombre_local:
             nombre_con_local = f'{c.nombre} ({c.nombre_local})'
@@ -191,8 +196,18 @@ def informes_deudas_pdf(request):
         Paragraph('', estilo_celda),
     ])
 
+    # Anchos de la tabla como estaban antes (sin la columna Local)
+    # Oficio vertical: 216mm - 20mm márgenes = 196mm útiles
+    # Nombre: 62mm | Frecuencia: 20mm | Deuda Total: 26mm
+    # Desayuno: 22mm | Almuerzo: 22mm | Total: 22mm | Estado: 22mm
     col_widths = [
-        62 * mm, 20 * mm, 26 * mm, 22 * mm, 22 * mm, 22 * mm, 22 * mm,
+        62 * mm,
+        20 * mm,
+        26 * mm,
+        22 * mm,
+        22 * mm,
+        22 * mm,
+        22 * mm,
     ]
 
     tabla = Table(data, colWidths=col_widths, repeatRows=1)
