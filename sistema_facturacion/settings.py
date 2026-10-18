@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'dbbackup',
 
     # App propia
     'facturacion.apps.FacturacionConfig',
@@ -81,6 +82,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'facturacion.context_processors.pedidos_pendientes_nav',
                 'facturacion.context_processors.transferencias_pendientes_nav',
+                'facturacion.context_processors.cierre_config',
             ],
         },
     },
@@ -142,6 +144,33 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+
+# =============================================================================
+# STORAGES (Django 4.2+)
+# - default: archivos media subidos por el usuario
+# - staticfiles: archivos estáticos recolectados por collectstatic
+# - dbbackup: carpeta donde django-dbbackup guarda los backups
+# =============================================================================
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        'OPTIONS': {
+            'location': MEDIA_ROOT,
+            'base_url': MEDIA_URL,
+        },
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+    'dbbackup': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        'OPTIONS': {
+            'location': BASE_DIR / 'backups',
+        },
+    },
+}
 
 
 # =============================================================================

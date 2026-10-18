@@ -14,6 +14,20 @@ ENV/
 .env.*.local
 
 # ============================================
+# Credenciales de Google (NUNCA subir)
+# ============================================
+credentials.json
+token.json
+
+# ============================================
+# Backups
+# ============================================
+backups/
+*.sqlite3
+*.sqlite3.metadata
+*.dump
+
+# ============================================
 # Python
 # ============================================
 __pycache__/
@@ -63,3 +77,18 @@ Thumbs.db
 estructura.txt
 error.txt
 Texto pegado.txt
+tree.txt
+para_la_ia.txt
+proyecto_completo.txt
+tanda1_modal.txt
+patron_modal.txt
+patron_modal_html.txt
+cierre_contexto.txt
+caja_contexto.txt
+pago_y_cliente.txt
+services.txt
+apps.txt
+auditoria_contexto.txt
+auditoria_templates.txt
+pago_model.txt
+cliente_views.txt
