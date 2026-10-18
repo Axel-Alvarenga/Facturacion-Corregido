@@ -15,7 +15,6 @@
                 <h4 class="mb-3">Registrar Pago / Abono</h4>
                 <form method="POST">
                     {% csrf_token %}
-                    {# next: para volver a donde el usuario vino #}
                     <input type="hidden" name="next" value="{{ next|default:'' }}">
 
                     <div class="mb-3">
@@ -23,6 +22,15 @@
                         {{ form.monto }}
                         {{ form.monto.errors }}
                     </div>
+
+                    <div class="mb-3">
+                        <label for="id_forma_pago" class="form-label fw-bold">Forma de pago</label>
+                        <select name="forma_pago" id="id_forma_pago" class="form-select">
+                            <option value="EFECTIVO">Efectivo</option>
+                            <option value="TRANSFERENCIA">Transferencia</option>
+                        </select>
+                    </div>
+
                     <button type="submit" class="btn btn-success w-100 fw-bold">
                         <i class="bi bi-check-circle"></i> Registrar Pago
                     </button>
@@ -44,6 +52,7 @@
                         <thead>
                             <tr>
                                 <th>Fecha y Hora</th>
+                                <th>Forma de pago</th>
                                 <th>Monto Pagado</th>
                             </tr>
                         </thead>
@@ -51,11 +60,14 @@
                             {% for pago in historial_pagos %}
                             <tr>
                                 <td>{{ pago.fecha|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ pago.get_forma_pago_display }}</span>
+                                </td>
                                 <td class="text-success fw-bold">Gs. {{ pago.monto|floatformat:2 }}</td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="2" class="text-center py-3">No hay pagos registrados aún.</td>
+                                <td colspan="3" class="text-center py-3">No hay pagos registrados aún.</td>
                             </tr>
                             {% endfor %}
                         </tbody>

@@ -299,38 +299,5 @@
 
 {% load static %}
 <script src="{% static 'facturacion/js/cliente_modal.js' %}?v=4"></script>
-
-<script>
-// Modal de eliminación
-document.getElementById('modalEliminarCliente').addEventListener('show.bs.modal', function (event) {
-    const boton = event.relatedTarget;
-    document.getElementById('modalEliminarClienteNombre').textContent = boton.getAttribute('data-nombre');
-    document.getElementById('formEliminarCliente').action = boton.getAttribute('data-url');
-});
-
-// Enter en la página (sin foco en inputs) abre el modal de Nuevo Cliente
-document.addEventListener('DOMContentLoaded', function () {
-    document.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter') return;
-
-        if (document.querySelector('.modal.show')) return;
-
-        const el = document.activeElement;
-        const tag = el ? el.tagName : '';
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
-            return;
-        }
-        if (tag === 'BUTTON' || tag === 'A') {
-            return;
-        }
-
-        e.preventDefault();
-        const modalEl = document.getElementById('modalCliente');
-        if (modalEl) {
-            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-            modal.show();
-        }
-    });
-});
-</script>
+<script src="{% static 'facturacion/js/clientes_list.js' %}?v=1"></script>
 {% endblock %}

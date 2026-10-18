@@ -19,10 +19,13 @@ from .informe_views import (
     informe_deuda_cliente_pdf,
     informes_ventas,
     informes_export_excel,
-    _ventas_filtradas,
 )
 from .auditoria_views import (
     auditoria_list, auditoria_detalle, auditoria_export_excel,
+)
+from .caja_views import (
+    caja_actual_api, caja_abrir_api, caja_cerrar_api,
+    caja_movimiento_api, caja_list_api, caja_detalle_api,
 )
 
 __all__ = [
@@ -35,4 +38,6 @@ __all__ = [
     'informes_deudas', 'informes_deudas_pdf', 'informe_deuda_cliente_pdf',
     'informes_ventas', 'informes_export_excel',
     'auditoria_list', 'auditoria_detalle', 'auditoria_export_excel',
+    'caja_actual_api', 'caja_abrir_api', 'caja_cerrar_api',
+    'caja_movimiento_api', 'caja_list_api', 'caja_detalle_api',
 ]

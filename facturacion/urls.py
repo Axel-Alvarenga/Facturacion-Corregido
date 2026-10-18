@@ -32,6 +32,14 @@ urlpatterns = [
 
     path('api/buscar-productos/', views.buscar_productos, name='buscar_productos'),
 
+    # ---- CAJA ----
+    path('caja/actual/', views.caja_actual_api, name='caja_actual_api'),
+    path('caja/abrir/', views.caja_abrir_api, name='caja_abrir_api'),
+    path('caja/cerrar/', views.caja_cerrar_api, name='caja_cerrar_api'),
+    path('caja/movimiento/', views.caja_movimiento_api, name='caja_movimiento_api'),
+    path('caja/list/', views.caja_list_api, name='caja_list_api'),
+    path('caja/<int:caja_id>/detalle/', views.caja_detalle_api, name='caja_detalle_api'),
+
     path('informes/', views.informes_deudas, name='informes'),
     path('informes/deudas/', views.informes_deudas, name='informes_deudas'),
     path('informes/deudas/pdf/', views.informes_deudas_pdf, name='informes_deudas_pdf'),

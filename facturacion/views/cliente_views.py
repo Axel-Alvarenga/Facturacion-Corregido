@@ -8,7 +8,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.utils.http import url_has_allowed_host_and_scheme
-from ..models import Cliente, PagoDeuda, Venta
+from ..models import Cliente, PagoDeuda, Venta, Caja, MovimientoCaja
 from ..forms import ClienteForm, PagoDeudaForm
 
 
@@ -206,10 +206,7 @@ def cliente_delete(request, pk):
 def pagar_deuda(request, cliente_id):
     cliente = get_object_or_404(Cliente, pk=cliente_id)
 
-    # Leer next del GET (cuando se entra al form) o del POST (cuando se envía)
     next_url = request.GET.get('next') or request.POST.get('next') or ''
-
-    # Validar que sea una URL segura (mismo host) para evitar open redirect
     if next_url and not url_has_allowed_host_and_scheme(
         url=next_url,
         allowed_hosts={request.get_host()},
@@ -221,8 +218,10 @@ def pagar_deuda(request, cliente_id):
         form = PagoDeudaForm(request.POST, cliente=cliente)
         if form.is_valid():
             monto_pago = form.cleaned_data['monto']
+            forma_pago = request.POST.get('forma_pago', 'EFECTIVO').upper()
+            if forma_pago not in ('EFECTIVO', 'TRANSFERENCIA'):
+                forma_pago = 'EFECTIVO'
 
-            # Validar saldo a favor: solo clientes CREDITO pueden pagar de más
             if monto_pago > cliente.deuda and cliente.tipo_pago != 'CREDITO':
                 messages.error(
                     request,
@@ -242,17 +241,33 @@ def pagar_deuda(request, cliente_id):
                 )
 
             with transaction.atomic():
-                _aplicar_pago_fifo(cliente, monto_pago, request.user)
+                pagos_creados = _aplicar_pago_fifo(
+                    cliente, monto_pago, request.user, forma_pago,
+                )
 
                 cliente.deuda -= monto_pago
                 cliente.save(update_fields=['deuda'])
+
+                # ---- INTEGRACIÓN CON CAJA ----
+                # Un solo MovimientoCaja consolidado (no uno por cada PagoDeuda)
+                caja = Caja.caja_abierta()
+                if caja:
+                    MovimientoCaja.objects.create(
+                        caja=caja,
+                        tipo='PAGO',
+                        forma_pago=forma_pago,
+                        monto=monto_pago,
+                        descripcion=f'Pago de deuda - {cliente.nombre} - {dict(PagoDeuda.FORMA_PAGO_CHOICES)[forma_pago]}',
+                        usuario=request.user,
+                        pago_deuda=pagos_creados[0] if pagos_creados else None,
+                    )
+                # ---- FIN INTEGRACIÓN ----
 
             messages.success(
                 request,
                 f'Pago de Gs. {monto_pago:,.0f} registrado para {cliente.nombre}.'
             )
 
-            # Redirigir a 'next' si existe, o al default
             if next_url:
                 return redirect(next_url)
             return redirect('informes_deudas')
@@ -268,13 +283,13 @@ def pagar_deuda(request, cliente_id):
     })
 
 
-def _aplicar_pago_fifo(cliente, monto_total, usuario):
+def _aplicar_pago_fifo(cliente, monto_total, usuario, forma_pago='EFECTIVO'):
     """Aplica un pago a las ventas a crédito del cliente en orden FIFO.
     Crea un PagoDeuda por cada venta afectada.
-    Si sobra monto después de cubrir todas las ventas, se registra
-    como un PagoDeuda sin venta (saldo a favor).
+    Devuelve la lista de PagoDeuda creados.
     """
     monto_restante = Decimal(monto_total)
+    pagos_creados = []
 
     ventas_credito = (
         Venta.objects
@@ -299,23 +314,28 @@ def _aplicar_pago_fifo(cliente, monto_total, usuario):
 
         monto_aplicar = min(monto_restante, saldo_venta)
 
-        PagoDeuda.objects.create(
+        pago = PagoDeuda.objects.create(
             cliente=cliente,
             venta=venta,
             monto=monto_aplicar,
+            forma_pago=forma_pago,
             registrado_por=usuario,
         )
-
+        pagos_creados.append(pago)
         monto_restante -= monto_aplicar
 
     if monto_restante > 0:
-        PagoDeuda.objects.create(
+        pago = PagoDeuda.objects.create(
             cliente=cliente,
             venta=None,
             monto=monto_restante,
+            forma_pago=forma_pago,
             registrado_por=usuario,
             observacion='Saldo a favor (pago mayor a la deuda)',
         )
+        pagos_creados.append(pago)
+
+    return pagos_creados
 
 
 def _form_errors_to_dict(form):

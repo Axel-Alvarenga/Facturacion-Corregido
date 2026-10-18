@@ -66,6 +66,15 @@
                         {% endif %}
                     </a>
                 </li>
+                <!-- CAJA -->
+                <li class="nav-item">
+                    <a class="nav-link" href="#" id="btn-nav-caja"
+                       data-bs-toggle="modal" data-bs-target="#modalCaja"
+                       title="Estado de la caja">
+                        <i class="bi bi-safe"></i> Caja
+                        <span class="badge" id="badge-caja-estado" style="display: none;"></span>
+                    </a>
+                </li>
                 {% if user.is_superuser %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'auditoria_list' %}">
@@ -127,6 +136,11 @@
 
 {% if user.is_authenticated %}
 <!-- ============================================================
+     MODALES DE CAJA (partial)
+     ============================================================ -->
+{% include 'facturacion/caja/caja_modal.html' %}
+
+<!-- ============================================================
      CONFIGURACIÓN GLOBAL (datos para los JS)
      ============================================================ -->
 <script type="application/json" id="arm-config-urls">
@@ -141,7 +155,13 @@
     "producto_create": "{% url 'producto_create' %}",
     "informes":        "{% url 'informes' %}",
     "venta_detalle_api": "{% url 'venta_detalle_api' venta_id=0 %}",
-    "anular_venta":      "{% url 'anular_venta' venta_id=0 %}"
+    "anular_venta":      "{% url 'anular_venta' venta_id=0 %}",
+    "caja_actual_api":     "{% url 'caja_actual_api' %}",
+    "caja_abrir_api":      "{% url 'caja_abrir_api' %}",
+    "caja_cerrar_api":     "{% url 'caja_cerrar_api' %}",
+    "caja_movimiento_api": "{% url 'caja_movimiento_api' %}",
+    "caja_list_api":       "{% url 'caja_list_api' %}",
+    "caja_detalle_api":    "{% url 'caja_detalle_api' caja_id=0 %}"
 }
 </script>
 
@@ -164,6 +184,7 @@
 <script src="{% static 'facturacion/js/toasts.js' %}?v=1"></script>
 <script src="{% static 'facturacion/js/atajos.js' %}?v=3"></script>
 <script src="{% static 'facturacion/js/cierre_automatico.js' %}?v=2"></script>
+<script src="{% static 'facturacion/js/caja_modal.js' %}?v=1"></script>
 {% endif %}
 </body>
 </html>

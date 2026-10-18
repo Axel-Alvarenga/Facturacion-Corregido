@@ -4,48 +4,93 @@
 <h2 class="mb-4">¿Qué necesitás hacer?</h2>
 
 <div class="row g-4">
-    <div class="col-md-4 col-sm-6">
-        <a href="{% url 'crear_venta' %}" class="text-decoration-none">
-            <div class="card card-dashboard p-4 text-center h-100">
-                <i class="bi bi-cart-plus display-4 mb-3"></i>
-                <h5 class="mb-0">Nueva Venta</h5>
-            </div>
-        </a>
-    </div>
-    <div class="col-md-4 col-sm-6">
-        <a href="{% url 'pedido_list' %}" class="text-decoration-none">
-            <div class="card card-dashboard p-4 text-center h-100 position-relative">
-                {% if pedidos_pendientes %}
-                    <span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ pedidos_pendientes }}</span>
+    <!-- Columna izquierda: Caja (grande, ocupa todo el alto) -->
+    <div class="col-md-4">
+        <div class="card card-dashboard p-4 text-center position-relative h-100 d-flex flex-column justify-content-between"
+             id="dashboard-caja-card"
+             role="button"
+             data-bs-toggle="modal" data-bs-target="#modalCaja"
+             data-caja-btn
+             style="cursor: pointer;">
+            <div class="position-absolute top-0 end-0 m-2" data-caja-estado>
+                {% if caja_abierta %}
+                    <span class="badge bg-success">Abierta</span>
+                {% else %}
+                    <span class="badge bg-secondary">Cerrada</span>
                 {% endif %}
-                <i class="bi bi-egg-fried display-4 mb-3"></i>
-                <h5 class="mb-0">Pedidos de Cocina</h5>
             </div>
-        </a>
+
+            <div class="flex-grow-1 d-flex flex-column justify-content-center align-items-center">
+                <i class="bi bi-safe display-1 mb-3"></i>
+                <h3 class="mb-3">Caja</h3>
+
+                <div class="texto-secundario small">
+                    {% if caja_abierta %}Esperado{% else %}Último cierre{% endif %}
+                </div>
+                <div class="fw-bold fs-4" data-caja-esperado>
+                    {% if caja_abierta %}
+                        Gs. {{ caja_totales.esperado|floatformat:0 }}
+                    {% elif caja_ultima_cerrada %}
+                        Gs. {{ caja_ultima_cerrada.monto_cierre_real|floatformat:0 }}
+                    {% else %}
+                        Gs. 0
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="texto-secundario small mt-3">
+                Movimientos: <span class="fw-bold" data-caja-movs>{{ caja_movs_count }}</span>
+            </div>
+        </div>
     </div>
-    <div class="col-md-4 col-sm-6">
-        <a href="{% url 'producto_list' %}" class="text-decoration-none">
-            <div class="card card-dashboard p-4 text-center h-100">
-                <i class="bi bi-box-seam display-4 mb-3"></i>
-                <h5 class="mb-0">Productos</h5>
+
+    <!-- Columna derecha: accesos rápidos (2 por fila) -->
+    <div class="col-md-8">
+        <div class="row g-3">
+            <div class="col-6">
+                <a href="{% url 'crear_venta' %}" class="text-decoration-none">
+                    <div class="card card-dashboard p-3 text-center h-100">
+                        <i class="bi bi-cart-plus display-5 mb-2"></i>
+                        <h6 class="mb-0">Nueva Venta</h6>
+                    </div>
+                </a>
             </div>
-        </a>
-    </div>
-    <div class="col-md-4 col-sm-6">
-        <a href="{% url 'cliente_list' %}" class="text-decoration-none">
-            <div class="card card-dashboard p-4 text-center h-100">
-                <i class="bi bi-people display-4 mb-3"></i>
-                <h5 class="mb-0">Clientes</h5>
+            <div class="col-6">
+                <a href="{% url 'pedido_list' %}" class="text-decoration-none">
+                    <div class="card card-dashboard p-3 text-center h-100 position-relative">
+                        {% if pedidos_pendientes %}
+                            <span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ pedidos_pendientes }}</span>
+                        {% endif %}
+                        <i class="bi bi-egg-fried display-5 mb-2"></i>
+                        <h6 class="mb-0">Pedidos</h6>
+                    </div>
+                </a>
             </div>
-        </a>
-    </div>
-    <div class="col-md-4 col-sm-6">
-        <a href="{% url 'informes' %}" class="text-decoration-none">
-            <div class="card card-dashboard p-4 text-center h-100">
-                <i class="bi bi-graph-up display-4 mb-3"></i>
-                <h5 class="mb-0">Informes de Ventas</h5>
+            <div class="col-6">
+                <a href="{% url 'producto_list' %}" class="text-decoration-none">
+                    <div class="card card-dashboard p-3 text-center h-100">
+                        <i class="bi bi-box-seam display-5 mb-2"></i>
+                        <h6 class="mb-0">Productos</h6>
+                    </div>
+                </a>
             </div>
-        </a>
+            <div class="col-6">
+                <a href="{% url 'cliente_list' %}" class="text-decoration-none">
+                    <div class="card card-dashboard p-3 text-center h-100">
+                        <i class="bi bi-people display-5 mb-2"></i>
+                        <h6 class="mb-0">Clientes</h6>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6">
+                <a href="{% url 'informes' %}" class="text-decoration-none">
+                    <div class="card card-dashboard p-3 text-center h-100">
+                        <i class="bi bi-graph-up display-5 mb-2"></i>
+                        <h6 class="mb-0">Informes</h6>
+                    </div>
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

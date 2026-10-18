@@ -1,0 +1,50 @@
+<div class="card card-kpi p-3 h-100" id="dashboard-caja-card">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="d-flex align-items-center gap-2">
+            <div class="kpi-icono"><i class="bi bi-safe"></i></div>
+            <div>
+                <div class="kpi-label">Caja</div>
+                <div data-caja-estado>
+                    {% if caja_abierta %}
+                        <span class="badge bg-success">Abierta</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Cerrada</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-2">
+        <div class="texto-secundario small">
+            {% if caja_abierta %}Esperado{% else %}Último cierre{% endif %}
+        </div>
+        <div class="fw-bold fs-5" data-caja-esperado>
+            {% if caja_abierta %}
+                {{ caja_totales.esperado|floatformat:0 }}
+            {% elif caja_abierta is None and caja_ultima_cerrada %}
+                {{ caja_ultima_cerrada.monto_cierre_real|floatformat:0 }}
+            {% else %}
+                0
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mb-2">
+        <div class="texto-secundario small">Movimientos</div>
+        <div class="fw-bold" data-caja-movs>
+            {% if caja_abierta %}{{ caja_abierta.movimientos.count }}{% else %}0{% endif %}
+        </div>
+    </div>
+
+    <button type="button"
+            class="btn {% if caja_abierta %}btn-success{% else %}btn-success{% endif %} btn-sm fw-bold w-100 mt-auto"
+            data-bs-toggle="modal" data-bs-target="#modalCaja"
+            data-caja-btn>
+        {% if caja_abierta %}
+            <i class="bi bi-safe"></i> Ver caja
+        {% else %}
+            <i class="bi bi-unlock"></i> Abrir caja
+        {% endif %}
+    </button>
+</div>

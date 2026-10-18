@@ -5,15 +5,15 @@
 <!-- Tabs -->
 <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
-        <a class="nav-link {% if pestaña_activa == 'deudas' %}active{% endif %}"
-           href="{% url 'informes_deudas' %}">
-            <i class="bi bi-cash-coin"></i> Deudas por cliente
-        </a>
-    </li>
-    <li class="nav-item">
         <a class="nav-link {% if pestaña_activa == 'ventas' %}active{% endif %}"
            href="{% url 'informes_ventas' %}">
             <i class="bi bi-graph-up"></i> Ventas del período
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if pestaña_activa == 'deudas' %}active{% endif %}"
+           href="{% url 'informes_deudas' %}">
+            <i class="bi bi-cash-coin"></i> Deudas por cliente
         </a>
     </li>
 </ul>
@@ -22,9 +22,6 @@
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h2 class="mb-0"><i class="bi bi-cash-coin"></i> Deudas por cliente</h2>
-        <p class="texto-secundario small mb-0">
-            Listado de clientes con su saldo deudor actual
-        </p>
     </div>
     <a href="{% url 'informes_deudas_pdf' %}?{{ request.GET.urlencode }}"
        class="btn btn-outline-danger fw-bold" id="btn-descargar-pdf"

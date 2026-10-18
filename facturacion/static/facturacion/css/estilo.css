@@ -768,3 +768,20 @@ label, .form-label { color: var(--color-texto); }
 #forma-pago-aviso i {
     margin-right: 0.2rem;
 }
+/* =========================================================
+   Colores semánticos para KPIs y resumen de informes
+   ========================================================= */
+.text-cobrado {
+    color: #4CAF50 !important;
+}
+.text-pendiente {
+    color: #FFC107 !important;
+}
+.kpi-icono-success {
+    background-color: rgba(46, 125, 50, 0.15) !important;
+    color: #4CAF50 !important;
+}
+.kpi-icono-warning {
+    background-color: rgba(255, 193, 7, 0.15) !important;
+    color: #FFC107 !important;
+}

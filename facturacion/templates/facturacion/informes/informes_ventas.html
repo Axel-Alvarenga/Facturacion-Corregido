@@ -5,31 +5,25 @@
 <!-- Tabs -->
 <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
-        <a class="nav-link {% if pestaña_activa == 'deudas' %}active{% endif %}"
-           href="{% url 'informes_deudas' %}">
-            <i class="bi bi-cash-coin"></i> Deudas por cliente
-        </a>
-    </li>
-    <li class="nav-item">
         <a class="nav-link {% if pestaña_activa == 'ventas' %}active{% endif %}"
            href="{% url 'informes_ventas' %}">
             <i class="bi bi-graph-up"></i> Ventas del período
         </a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link {% if pestaña_activa == 'deudas' %}active{% endif %}"
+           href="{% url 'informes_deudas' %}">
+            <i class="bi bi-cash-coin"></i> Deudas por cliente
+        </a>
+    </li>
 </ul>
 
 <!-- Encabezado -->
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h2 class="mb-0"><i class="bi bi-graph-up"></i> Ventas del período</h2>
-        <p class="texto-secundario small mb-0">
-            Historial de ventas registradas con filtros por cliente, forma de pago y fecha
-        </p>
     </div>
     <div class="d-flex gap-2 flex-wrap no-print">
-        <a href="{% url 'crear_venta' %}" class="btn btn-primary fw-bold">
-            <i class="bi bi-cart-plus"></i> Nueva Venta
-        </a>
         <a href="{% url 'informes_export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success fw-bold">
             <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
         </a>
@@ -39,7 +33,7 @@
     </div>
 </div>
 
-<div class="btn-group mb-3 flex-wrap no-print" role="group">
+<div class="btn-group mb-4 flex-wrap no-print" role="group">
     <a href="?fecha_desde={{ hoy }}&fecha_hasta={{ hoy }}" class="btn btn-outline-secondary btn-sm">Hoy</a>
     <a href="?fecha_desde={{ primer_dia_mes }}&fecha_hasta={{ hoy }}" class="btn btn-outline-secondary btn-sm">Este mes</a>
     <a href="{% url 'informes_ventas' %}" class="btn btn-outline-secondary btn-sm">Todo el historial</a>
@@ -75,7 +69,7 @@
 </form>
 
 <!-- KPIs principales -->
-<div class="row g-3 mb-3">
+<div class="row g-3 mb-4">
     <div class="col-md-3">
         <div class="card card-kpi p-3">
             <div class="d-flex align-items-center gap-3">
@@ -90,11 +84,9 @@
     <div class="col-md-3">
         <div class="card card-kpi p-3">
             <div class="d-flex align-items-center gap-3">
-                <div class="kpi-icono" style="background-color: rgba(46,125,50,0.15); color: #4CAF50;">
-                    <i class="bi bi-check-circle"></i>
-                </div>
+                <div class="kpi-icono kpi-icono-success"><i class="bi bi-check-circle"></i></div>
                 <div>
-                    <div class="kpi-valor" style="color:#4CAF50;">Gs. {{ total_cobrado|floatformat:0 }}</div>
+                    <div class="kpi-valor text-cobrado">Gs. {{ total_cobrado|floatformat:0 }}</div>
                     <div class="kpi-label">Cobrado</div>
                 </div>
             </div>
@@ -103,11 +95,9 @@
     <div class="col-md-3">
         <div class="card card-kpi p-3">
             <div class="d-flex align-items-center gap-3">
-                <div class="kpi-icono" style="background-color: rgba(255,193,7,0.15); color: #FFC107;">
-                    <i class="bi bi-hourglass-split"></i>
-                </div>
+                <div class="kpi-icono kpi-icono-warning"><i class="bi bi-hourglass-split"></i></div>
                 <div>
-                    <div class="kpi-valor" style="color:#FFC107;">Gs. {{ total_pendiente|floatformat:0 }}</div>
+                    <div class="kpi-valor text-pendiente">Gs. {{ total_pendiente|floatformat:0 }}</div>
                     <div class="kpi-label">Pendiente de cobro</div>
                 </div>
             </div>
@@ -133,7 +123,7 @@
             <div class="kpi-label mb-2"><i class="bi bi-cash"></i> Efectivo</div>
             <div class="d-flex justify-content-between">
                 <span class="texto-secundario small">Cobrado</span>
-                <span class="fw-bold" style="color:#4CAF50;">Gs. {{ resumen_forma_pago.EFECTIVO.cobrado|floatformat:0 }}</span>
+                <span class="fw-bold text-cobrado">Gs. {{ resumen_forma_pago.EFECTIVO.cobrado|floatformat:0 }}</span>
             </div>
             <div class="d-flex justify-content-between">
                 <span class="texto-secundario small">Pendiente</span>
@@ -146,11 +136,11 @@
             <div class="kpi-label mb-2"><i class="bi bi-hourglass-split"></i> Crédito</div>
             <div class="d-flex justify-content-between">
                 <span class="texto-secundario small">Cobrado</span>
-                <span class="fw-bold" style="color:#4CAF50;">Gs. {{ resumen_forma_pago.CREDITO.cobrado|floatformat:0 }}</span>
+                <span class="fw-bold text-cobrado">Gs. {{ resumen_forma_pago.CREDITO.cobrado|floatformat:0 }}</span>
             </div>
             <div class="d-flex justify-content-between">
                 <span class="texto-secundario small">Pendiente</span>
-                <span class="fw-bold" style="color:#FFC107;">Gs. {{ resumen_forma_pago.CREDITO.pendiente|floatformat:0 }}</span>
+                <span class="fw-bold text-pendiente">Gs. {{ resumen_forma_pago.CREDITO.pendiente|floatformat:0 }}</span>
             </div>
         </div>
     </div>
@@ -159,11 +149,11 @@
             <div class="kpi-label mb-2"><i class="bi bi-bank"></i> Transferencia</div>
             <div class="d-flex justify-content-between">
                 <span class="texto-secundario small">Cobrado</span>
-                <span class="fw-bold" style="color:#4CAF50;">Gs. {{ resumen_forma_pago.TRANSFERENCIA.cobrado|floatformat:0 }}</span>
+                <span class="fw-bold text-cobrado">Gs. {{ resumen_forma_pago.TRANSFERENCIA.cobrado|floatformat:0 }}</span>
             </div>
             <div class="d-flex justify-content-between">
                 <span class="texto-secundario small">Pendiente</span>
-                <span class="fw-bold" style="color:#FFC107;">Gs. {{ resumen_forma_pago.TRANSFERENCIA.pendiente|floatformat:0 }}</span>
+                <span class="fw-bold text-pendiente">Gs. {{ resumen_forma_pago.TRANSFERENCIA.pendiente|floatformat:0 }}</span>
             </div>
         </div>
     </div>
@@ -203,18 +193,6 @@
                     <td>
                         {% if venta.estado == 'PENDIENTE' %}
                             <span class="badge bg-warning text-dark">{{ venta.get_estado_display }}</span>
-                            {% if venta.forma_pago == 'TRANSFERENCIA' and not venta.anulada %}
-                                <button type="button"
-                                        class="btn btn-success btn-sm fw-bold ms-2 btn-confirmar-transferencia"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalConfirmarTransferencia"
-                                        data-venta-id="{{ venta.id }}"
-                                        data-venta-total="Gs. {{ venta.total|floatformat:0 }}"
-                                        data-venta-cliente="{{ venta.cliente.nombre }}"
-                                        title="Confirmar transferencia recibida">
-                                    <i class="bi bi-check-circle"></i> Confirmar
-                                </button>
-                            {% endif %}
                         {% else %}
                             <span class="badge bg-success">{{ venta.get_estado_display }}</span>
                         {% endif %}
@@ -349,31 +327,6 @@
 </div>
 
 {% load static %}
-<script src="{% static 'facturacion/js/venta_detalle_modal.js' %}?v=2"></script>
-
-<script>
-// ============================================================
-// Modal de confirmación de transferencia (custom, sin alert)
-// ============================================================
-document.addEventListener('DOMContentLoaded', function () {
-    const modalConfTransf = document.getElementById('modalConfirmarTransferencia');
-    if (!modalConfTransf) return;
-
-    modalConfTransf.addEventListener('show.bs.modal', function (event) {
-        const boton = event.relatedTarget;
-        if (!boton) return;
-
-        const ventaId = boton.getAttribute('data-venta-id');
-        const ventaTotal = boton.getAttribute('data-venta-total');
-        const ventaCliente = boton.getAttribute('data-venta-cliente');
-
-        document.getElementById('conf-transf-venta-id').textContent = '#' + ventaId;
-        document.getElementById('conf-transf-cliente').textContent = ventaCliente;
-        document.getElementById('conf-transf-monto').textContent = ventaTotal;
-
-        const form = document.getElementById('formConfirmarTransferencia');
-        form.action = '/ventas/' + ventaId + '/confirmar-transferencia/';
-    });
-});
-</script>
+<script src="{% static 'facturacion/js/venta_detalle_modal.js' %}?v=3"></script>
+<script src="{% static 'facturacion/js/informes_ventas.js' %}?v=1"></script>
 {% endblock %}

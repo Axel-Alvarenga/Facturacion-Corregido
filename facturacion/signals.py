@@ -19,6 +19,7 @@ from .models import (
     RegistroAuditoria,
     Producto, Cliente, Venta, DetalleVenta, ItemVentaManual,
     PagoDeuda, PedidoCocina, DetallePedido,
+    Caja, MovimientoCaja,
 )
 from .middleware import get_current_user, get_current_request
 
@@ -161,6 +162,8 @@ MODELOS_A_AUDITAR = [
     PagoDeuda,
     PedidoCocina,
     DetallePedido,
+    Caja,
+    MovimientoCaja,
 ]
 
 for modelo in MODELOS_A_AUDITAR:

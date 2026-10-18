@@ -7,6 +7,7 @@ from .venta import (
 from .pago import PagoDeuda
 from .pedido import PedidoCocina, DetallePedido
 from .auditoria import RegistroAuditoria
+from .caja import Caja, MovimientoCaja
 
 __all__ = [
     'Cliente',
@@ -22,4 +23,6 @@ __all__ = [
     'PedidoCocina',
     'DetallePedido',
     'RegistroAuditoria',
+    'Caja',
+    'MovimientoCaja',
 ]

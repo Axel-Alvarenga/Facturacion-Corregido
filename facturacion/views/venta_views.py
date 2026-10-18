@@ -5,7 +5,10 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from ..models import Cliente, Producto, Venta, DetalleVenta, ItemVentaManual
+from ..models import (
+    Cliente, Producto, Venta, DetalleVenta, ItemVentaManual,
+    Caja, MovimientoCaja,
+)
 
 
 def _cliente_consumidor_final():
@@ -77,7 +80,6 @@ def crear_venta(request):
                         total_real += precio
                         manuales.append((desc, precio))
 
-                    # Calcular monto_pagado y vuelto (solo efectivo)
                     monto_pagado = None
                     vuelto = None
                     if forma_pago == 'EFECTIVO':
@@ -88,12 +90,10 @@ def crear_venta(request):
                         if monto_pagado < 0:
                             monto_pagado = total_real
                         if monto_pagado < total_real:
-                            # El JS ya bloquea esto, pero por si acaso
                             error = 'El monto pagado no puede ser menor al total.'
                             raise ValueError('Monto pagado menor al total')
                         vuelto = monto_pagado - total_real
 
-                    # Transferencia → PENDIENTE hasta confirmar recepción.
                     estado_venta = 'PENDIENTE' if forma_pago == 'TRANSFERENCIA' else 'CONFIRMADA'
 
                     venta = Venta.objects.create(
@@ -123,6 +123,21 @@ def crear_venta(request):
                     if forma_pago == 'CREDITO':
                         cliente.deuda += total_real
                         cliente.save(update_fields=['deuda'])
+
+                    # ---- INTEGRACIÓN CON CAJA ----
+                    caja = Caja.caja_abierta()
+                    if caja:
+                        MovimientoCaja.objects.create(
+                            caja=caja,
+                            tipo='VENTA',
+                            forma_pago=forma_pago,
+                            monto=total_real,
+                            descripcion=f'Venta #{venta.id} - {venta.get_forma_pago_display()}',
+                            usuario=request.user,
+                            venta=venta,
+                        )
+                    # ---- FIN INTEGRACIÓN ----
+
             except (ValueError, Producto.DoesNotExist):
                 if not error:
                     error = 'Hubo un problema con los datos de la venta. Verificá e intentá de nuevo.'
@@ -273,7 +288,6 @@ def venta_detalle_api(request, venta_id):
             'detalles': detalles,
             'items_manuales': manuales,
             'ticket_url': f'/ventas/{venta.id}/ticket/',
-            # Anulación
             'anulada': venta.anulada,
             'fecha_anulacion': venta.fecha_anulacion.strftime('%d/%m/%Y %H:%M') if venta.fecha_anulacion else None,
             'anulada_por': venta.anulada_por.username if venta.anulada_por else None,
@@ -291,6 +305,7 @@ def anular_venta(request, venta_id):
     - Bloquea si la venta ya está anulada.
     - Bloquea si es a crédito y ya tiene pagos.
     - Si es a crédito sin pagos, resta el total de la deuda del cliente.
+    - Si la venta tenía un MovimientoCaja, lo marca como anulado.
     El cambio queda registrado automáticamente en la auditoría
     (signal post_save de Venta).
     """
@@ -314,7 +329,6 @@ def anular_venta(request, venta_id):
         return redirect('informes_ventas')
 
     with transaction.atomic():
-        # Si es a crédito sin pagos, restar la deuda del cliente
         if venta.forma_pago == 'CREDITO':
             cliente = venta.cliente
             cliente.deuda -= venta.total
@@ -327,6 +341,12 @@ def anular_venta(request, venta_id):
         venta.save(update_fields=[
             'anulada', 'fecha_anulacion', 'anulada_por', 'motivo_anulacion',
         ])
+
+        # ---- Marcar movimientos de caja como anulados ----
+        MovimientoCaja.objects.filter(venta=venta, anulado=False).update(
+            anulado=True,
+            fecha_anulacion=timezone.now(),
+        )
 
     messages.success(
         request,

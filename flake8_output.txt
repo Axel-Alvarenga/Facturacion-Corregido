@@ -1,0 +1,4 @@
+facturacion/views/__init__.py:16:1: F401 '.informe_views._ventas_filtradas' imported but unused
+facturacion/views/auth_views.py:2:1: F401 'django.contrib.auth.authenticate' imported but unused
+2     F401 '.informe_views._ventas_filtradas' imported but unused
+2

@@ -9,6 +9,11 @@ class PagoDeuda(models.Model):
     Se usa para calcular saldos pendientes reales por venta (FIFO)
     y para el KPI de 'crédito pendiente' en los informes.
     """
+    FORMA_PAGO_CHOICES = [
+        ('EFECTIVO', 'Efectivo'),
+        ('TRANSFERENCIA', 'Transferencia'),
+    ]
+
     cliente = models.ForeignKey(
         Cliente,
         on_delete=models.CASCADE,
@@ -25,6 +30,15 @@ class PagoDeuda(models.Model):
     )
     monto = models.DecimalField(max_digits=12, decimal_places=2)
     fecha = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    forma_pago = models.CharField(
+        max_length=20,
+        choices=FORMA_PAGO_CHOICES,
+        default='EFECTIVO',
+        db_index=True,
+        verbose_name='Forma de pago',
+    )
+
     registrado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
