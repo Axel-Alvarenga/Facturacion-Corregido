@@ -132,7 +132,7 @@
                         </td>
                         <td class="text-center text-nowrap">
                             {% if c.deuda > 0 %}
-                                <a href="{% url 'pagar_deuda' c.id %}"
+                                <a href="{% url 'pagar_deuda' c.id %}?next={% url 'informes_deudas' %}"
                                    class="btn btn-info btn-sm fw-bold text-white"
                                    title="Cobrar / Abonar deuda">
                                     <i class="bi bi-cash-coin"></i> Pagar
@@ -173,38 +173,6 @@
     </div>
 </div>
 
-<!-- Auto-filtrado -->
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('form-filtros-deudas');
-    const inputBuscar = document.getElementById('input-buscar-deudas');
-    const checkboxDeuda = document.getElementById('solo_con_deuda');
-    if (!form) return;
-
-    if (checkboxDeuda) {
-        checkboxDeuda.addEventListener('change', function () {
-            form.submit();
-        });
-    }
-
-    if (inputBuscar) {
-        let timeoutId = null;
-        inputBuscar.addEventListener('input', function () {
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(function () {
-                form.submit();
-            }, 500);
-        });
-
-        inputBuscar.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                clearTimeout(timeoutId);
-                form.submit();
-            }
-        });
-    }
-});
-</script>
-
+{% load static %}
+<script src="{% static 'facturacion/js/informes_deudas.js' %}?v=1"></script>
 {% endblock %}

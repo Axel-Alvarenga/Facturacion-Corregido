@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
+from django.utils.http import url_has_allowed_host_and_scheme
 from ..models import Cliente, PagoDeuda, Venta
 from ..forms import ClienteForm, PagoDeudaForm
 
@@ -90,7 +91,6 @@ def cliente_create(request):
                     ),
                 )
 
-            # Guardar
             cliente = form.save()
 
             if origen == 'venta':
@@ -111,7 +111,6 @@ def cliente_create(request):
             messages.success(request, f'Cliente "{cliente.nombre}" creado.')
             return redirect('cliente_list')
 
-        # Form inválido
         if es_ajax:
             return JsonResponse({
                 'ok': False,
@@ -169,7 +168,6 @@ def cliente_update(request, pk):
             messages.success(request, f'Cliente "{cliente.nombre}" actualizado.')
             return redirect('cliente_list')
 
-        # Form inválido
         if es_ajax:
             return JsonResponse({
                 'ok': False,
@@ -207,6 +205,18 @@ def cliente_delete(request, pk):
 @login_required(login_url='login')
 def pagar_deuda(request, cliente_id):
     cliente = get_object_or_404(Cliente, pk=cliente_id)
+
+    # Leer next del GET (cuando se entra al form) o del POST (cuando se envía)
+    next_url = request.GET.get('next') or request.POST.get('next') or ''
+
+    # Validar que sea una URL segura (mismo host) para evitar open redirect
+    if next_url and not url_has_allowed_host_and_scheme(
+        url=next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        next_url = ''
+
     if request.method == 'POST':
         form = PagoDeudaForm(request.POST, cliente=cliente)
         if form.is_valid():
@@ -227,14 +237,13 @@ def pagar_deuda(request, cliente_id):
                         'cliente': cliente,
                         'form': form,
                         'historial_pagos': cliente.pagos.all().order_by('-fecha'),
+                        'next': next_url,
                     },
                 )
 
             with transaction.atomic():
-                # Aplicar FIFO a las ventas a crédito con saldo pendiente
                 _aplicar_pago_fifo(cliente, monto_pago, request.user)
 
-                # Actualizar la deuda del cliente (puede quedar negativa si es CREDITO)
                 cliente.deuda -= monto_pago
                 cliente.save(update_fields=['deuda'])
 
@@ -242,7 +251,11 @@ def pagar_deuda(request, cliente_id):
                 request,
                 f'Pago de Gs. {monto_pago:,.0f} registrado para {cliente.nombre}.'
             )
-            return redirect('cliente_list')
+
+            # Redirigir a 'next' si existe, o al default
+            if next_url:
+                return redirect(next_url)
+            return redirect('informes_deudas')
     else:
         form = PagoDeudaForm(cliente=cliente)
 
@@ -251,6 +264,7 @@ def pagar_deuda(request, cliente_id):
         'cliente': cliente,
         'form': form,
         'historial_pagos': historial_pagos,
+        'next': next_url,
     })
 
 
@@ -262,10 +276,9 @@ def _aplicar_pago_fifo(cliente, monto_total, usuario):
     """
     monto_restante = Decimal(monto_total)
 
-    # Traer ventas a crédito con saldo pendiente, ordenadas por fecha ASC
     ventas_credito = (
         Venta.objects
-        .filter(cliente=cliente, forma_pago='CREDITO')
+        .filter(cliente=cliente, forma_pago='CREDITO', anulada=False)
         .order_by('fecha')
     )
 
@@ -273,7 +286,6 @@ def _aplicar_pago_fifo(cliente, monto_total, usuario):
         if monto_restante <= 0:
             break
 
-        # Calcular saldo pendiente de esta venta
         pagado_venta = (
             PagoDeuda.objects
             .filter(venta=venta)
@@ -283,7 +295,7 @@ def _aplicar_pago_fifo(cliente, monto_total, usuario):
         saldo_venta = venta.total - pagado_venta
 
         if saldo_venta <= 0:
-            continue  # esta venta ya está saldada
+            continue
 
         monto_aplicar = min(monto_restante, saldo_venta)
 
@@ -296,7 +308,6 @@ def _aplicar_pago_fifo(cliente, monto_total, usuario):
 
         monto_restante -= monto_aplicar
 
-    # Si sobró monto (cliente CREDITO pagó de más), registrar saldo a favor
     if monto_restante > 0:
         PagoDeuda.objects.create(
             cliente=cliente,
