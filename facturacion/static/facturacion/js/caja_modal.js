@@ -183,6 +183,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderCajaAbierta(caja) {
         const t = caja.totales;
         const movs = caja.movimientos || [];
+        const movsActivos = movs.filter(m => !m.anulado).length;
+        const movsAnulados = movs.length - movsActivos;
 
         let html = `
             <div class="alert alert-success mb-3">
@@ -241,7 +243,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 </button>
             </div>
 
-            <h5 class="mb-2"><i class="bi bi-list-ul"></i> Movimientos (${movs.length})</h5>
+            <h5 class="mb-2">
+                <i class="bi bi-list-ul"></i>
+                Movimientos
+                <span class="texto-secundario small">
+                    (${movsActivos} activo${movsActivos !== 1 ? 's' : ''}
+                    ${movsAnulados > 0 ? ` · ${movsAnulados} anulado${movsAnulados !== 1 ? 's' : ''}` : ''})
+                </span>
+            </h5>
         `;
 
         if (movs.length === 0) {
@@ -256,7 +265,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <th>Fecha</th>
                                 <th>Tipo</th>
                                 <th>Forma de pago</th>
+                                <th>Referencia</th>
                                 <th>Descripción</th>
+                                <th>Estado</th>
                                 <th class="text-end">Monto</th>
                             </tr>
                         </thead>
@@ -269,12 +280,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 const badgeForma = m.forma_pago
                     ? `<span class="badge bg-info text-dark">${esc(m.forma_pago)}</span>`
                     : '<span class="texto-secundario small">-</span>';
+                let referencia = '-';
+                if (m.venta_id) {
+                    referencia = `<span class="small">Venta #${m.venta_id}</span>`;
+                } else if (m.tipo === 'PAGO') {
+                    referencia = '<span class="texto-secundario small">Pago deuda</span>';
+                } else if (m.tipo === 'INGRESO' || m.tipo === 'RETIRO') {
+                    referencia = '<span class="texto-secundario small">Manual</span>';
+                }
+                const badgeEstado = m.anulado
+                    ? '<span class="badge bg-danger">Anulado</span>'
+                    : '<span class="badge bg-success">Activo</span>';
                 html += `
                     <tr class="${m.anulado ? 'opacity-50' : ''}">
                         <td class="small">${esc(m.fecha)}</td>
                         <td><span class="badge bg-secondary">${esc(m.tipo_display)}</span></td>
                         <td>${badgeForma}</td>
+                        <td>${referencia}</td>
                         <td class="small">${esc(m.descripcion || '-')}</td>
+                        <td>${badgeEstado}</td>
                         <td class="text-end fw-bold ${colorTipo}">${signo} ${esc(m.monto_fmt)}</td>
                     </tr>
                 `;
@@ -407,14 +431,34 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('cerrar-caja-error').style.display = 'none';
 
         const t = caja.totales;
-        document.getElementById('cerrar-resumen').innerHTML = `
+        const movsAnulados = (caja.movimientos || []).filter(m => m.anulado).length;
+        const movsActivos = (caja.movimientos || []).filter(m => !m.anulado).length;
+
+        let resumenHtml = `
             <div><strong>Apertura:</strong> ${esc(t.monto_apertura_fmt)}</div>
             <div><strong>Ventas efectivo:</strong> ${esc(t.ventas_efectivo_fmt)}</div>
             <div><strong>Pagos efectivo:</strong> ${esc(t.pagos_efectivo_fmt)}</div>
             <div><strong>Ingresos:</strong> ${esc(t.ingresos_fmt)}</div>
             <div><strong>Retiros:</strong> ${esc(t.retiros_fmt)}</div>
+        `;
+
+        if (movsAnulados > 0) {
+            resumenHtml += `
+                <div class="alert alert-warning mt-2 mb-0 py-2">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span class="small">
+                        ${movsAnulados} movimiento(s) anulado(s) excluido(s) del cálculo.
+                        (${movsActivos} activos)
+                    </span>
+                </div>
+            `;
+        }
+
+        resumenHtml += `
             <div class="mt-2"><strong>Esperado:</strong> <span class="fs-5 text-warning">${esc(t.esperado_fmt)}</span></div>
         `;
+
+        document.getElementById('cerrar-resumen').innerHTML = resumenHtml;
 
         document.getElementById('cerrar-monto-real').value = t.esperado;
         modalCerrar.show();

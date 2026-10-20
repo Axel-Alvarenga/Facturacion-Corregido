@@ -62,7 +62,7 @@ def _caja_a_dict(caja, incluir_movimientos=False):
 
     if incluir_movimientos:
         movs = []
-        for m in caja.movimientos.select_related('usuario', 'venta').all().order_by('-fecha'):
+        for m in caja.movimientos.select_related('usuario', 'venta', 'pago_deuda').all().order_by('-fecha'):
             movs.append({
                 'id': m.id,
                 'tipo': m.tipo,
@@ -74,6 +74,7 @@ def _caja_a_dict(caja, incluir_movimientos=False):
                 'fecha': m.fecha.strftime('%d/%m/%Y %H:%M'),
                 'usuario': m.usuario.username if m.usuario else None,
                 'venta_id': m.venta_id,
+                'pago_deuda_id': m.pago_deuda_id,
                 'anulado': m.anulado,
             })
         data['movimientos'] = movs
@@ -100,7 +101,6 @@ def caja_actual_api(request):
             'caja': _caja_a_dict(caja, incluir_movimientos=True),
         })
 
-    # No hay caja abierta: devolver la última cerrada (si existe)
     ultima = Caja.objects.filter(estado='CERRADA').order_by('-fecha_cierre').first()
     return JsonResponse({
         'ok': True,
@@ -121,7 +121,6 @@ def caja_abrir_api(request):
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'Método no permitido.'}, status=405)
 
-    # Verificar que no haya otra caja abierta
     if Caja.caja_abierta():
         return JsonResponse({
             'ok': False,
@@ -183,7 +182,6 @@ def caja_cerrar_api(request):
     esperado = totales['esperado']
     diferencia = monto_real - esperado
 
-    # Si hay diferencia, exigir observación
     if diferencia != 0 and not observaciones:
         return JsonResponse({
             'ok': False,
