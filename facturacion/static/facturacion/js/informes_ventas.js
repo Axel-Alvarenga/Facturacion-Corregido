@@ -6,7 +6,7 @@
 
 document.addEventListener('DOMContentLoaded', function () {
     const urls = window.__ARM_URLS__ || {};
-    const csrfToken = (window.__ARM_CIERRE_CONFIG__ || {}).csrfToken || '';
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
     // ============================================================
     // Modal: Confirmar transferencia (individual)
@@ -119,7 +119,6 @@ document.addEventListener('DOMContentLoaded', function () {
             html += `</tbody></table></div></div>`;
             bodyPendientes.innerHTML = html;
 
-            // Listeners de cada botón "Confirmar"
             bodyPendientes.querySelectorAll('.btn-confirmar-pendiente').forEach(btn => {
                 btn.addEventListener('click', async function () {
                     const url = this.getAttribute('data-confirmar-url');

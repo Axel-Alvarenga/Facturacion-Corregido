@@ -25,11 +25,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SEGURIDAD
 # =============================================================================
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# Se lee del archivo .env. En producción, definir DJANGO_SECRET_KEY en el entorno.
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'clave-insegura-solo-para-desarrollo')
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
@@ -82,7 +79,6 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'facturacion.context_processors.pedidos_pendientes_nav',
                 'facturacion.context_processors.transferencias_pendientes_nav',
-                'facturacion.context_processors.cierre_config',
             ],
         },
     },
@@ -148,9 +144,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # =============================================================================
 # STORAGES (Django 4.2+)
-# - default: archivos media subidos por el usuario
-# - staticfiles: archivos estáticos recolectados por collectstatic
-# - dbbackup: carpeta donde django-dbbackup guarda los backups
 # =============================================================================
 
 STORAGES = {
@@ -174,25 +167,19 @@ STORAGES = {
 
 
 # =============================================================================
+# SESIÓN: CIERRE POR INACTIVIDAD
+# =============================================================================
+# La sesión expira después de 30 minutos de inactividad.
+# Cada request renueva el contador (SESSION_SAVE_EVERY_REQUEST).
+# Al cerrar el navegador, la sesión se borra (SESSION_EXPIRE_AT_BROWSER_CLOSE).
+
+SESSION_COOKIE_AGE = 1800          # 30 minutos
+SESSION_SAVE_EVERY_REQUEST = True  # Renovar en cada request
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Cerrar al cerrar el navegador
+
+
+# =============================================================================
 # CONFIGURACIÓN GENERAL
 # =============================================================================
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# =========================================================
-# Horario de cierre del sistema
-# =========================================================
-# Hora de cierre (24h). Después de esta hora, el sistema
-# cierra la sesión y redirige al login.
-CIERRE_SISTEMA_HORA = 20
-
-# Hora de apertura (24h). Se usa en el mensaje del login
-# ("El sistema está cerrado. Volvé a partir de las X hs.")
-APERTURA_SISTEMA_HORA = 8
-
-# Minutos de aviso antes del cierre (para mostrar el modal
-# "El sistema se cierra en X minutos").
-AVISO_CIERRE_MINUTOS_ANTES = 5
-
-# Minutos que se pueden extender con el botón "Extender 10 min".
-EXTENSION_MINUTOS = 10

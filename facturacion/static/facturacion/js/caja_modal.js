@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!modalCajaEl) return;
 
     const urls = window.__ARM_URLS__ || {};
-    const csrfToken = (window.__ARM_CIERRE_CONFIG__ || {}).csrfToken || '';
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
     const modalCaja = bootstrap.Modal.getOrCreateInstance(modalCajaEl);
     const modalAbrirEl = document.getElementById('modalAbrirCaja');
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================================
-    // Tarjeta del dashboard (si existe en la página actual)
+    // Tarjeta del dashboard
     // ============================================================
     function actualizarTarjetaDashboard(caja) {
         const tarjeta = document.getElementById('dashboard-caja-card');
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================================
-    // Cargar estado actual y renderizar
+    // Cargar estado
     // ============================================================
     async function cargarEstado() {
         modalBody.innerHTML = `
@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================================
-    // Render: caja cerrada (última)
+    // Render: caja cerrada
     // ============================================================
     function renderCajaCerrada(caja) {
         const tieneDif = caja.diferencia !== null && caja.diferencia !== 0;

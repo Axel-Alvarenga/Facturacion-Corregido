@@ -60,7 +60,12 @@
                 <div class="kpi-icono"><i class="bi bi-cash-stack"></i></div>
                 <div>
                     <div class="kpi-valor">Gs. {{ monto_total_deuda|floatformat:0 }}</div>
-                    <div class="kpi-label">Monto total adeudado</div>
+                    <div class="kpi-label">
+                        Monto total adeudado
+                        {% if buscar or solo_con_deuda %}
+                            <span class="texto-secundario small">(filtrado)</span>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -123,6 +128,8 @@
                         <td class="text-end">
                             {% if c.deuda > 0 %}
                                 <span class="deuda-valor">Gs. {{ c.deuda|floatformat:0 }}</span>
+                            {% elif c.deuda < 0 %}
+                                <span class="text-info">Gs. {{ c.deuda|floatformat:0 }} (a favor)</span>
                             {% else %}
                                 <span class="texto-secundario">Gs. 0</span>
                             {% endif %}
