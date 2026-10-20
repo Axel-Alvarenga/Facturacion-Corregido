@@ -57,13 +57,15 @@ def _caja_a_dict(caja, incluir_movimientos=False):
             'retiros_fmt': _formatear_gs(totales.get('retiros')),
             'esperado': _serializar_decimal(totales.get('esperado')),
             'esperado_fmt': _formatear_gs(totales.get('esperado')),
-            # Nuevos campos de transferencia
+            # Transferencias
             'ventas_transferencia': _serializar_decimal(totales.get('ventas_transferencia')),
             'ventas_transferencia_fmt': _formatear_gs(totales.get('ventas_transferencia')),
             'pagos_transferencia': _serializar_decimal(totales.get('pagos_transferencia')),
             'pagos_transferencia_fmt': _formatear_gs(totales.get('pagos_transferencia')),
             'total_transferencias': _serializar_decimal(totales.get('total_transferencias')),
             'total_transferencias_fmt': _formatear_gs(totales.get('total_transferencias')),
+            'transferencias_pendientes': _serializar_decimal(totales.get('transferencias_pendientes')),
+            'transferencias_pendientes_fmt': _formatear_gs(totales.get('transferencias_pendientes')),
         },
     }
 

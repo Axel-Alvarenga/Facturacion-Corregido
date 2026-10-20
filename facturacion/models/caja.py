@@ -65,7 +65,7 @@ class Caja(models.Model):
 
     def calcular_totales(self):
         """Calcula los totales de la caja. Separa efectivo (físico) de transferencias.
-        Solo los movimientos NO anulados.
+        Las transferencias PENDIENTES no suman al total en banco.
         """
         movs = self.movimientos.filter(anulado=False)
 
@@ -90,16 +90,27 @@ class Caja(models.Model):
         esperado = self.monto_apertura + ventas_efectivo + pagos_efectivo + ingresos - retiros
 
         # --- TRANSFERENCIAS (digital) ---
-        ventas_transferencia = sum(
-            (m.monto for m in movs if m.tipo == 'VENTA' and m.forma_pago == 'TRANSFERENCIA'),
+        # Confirmadas: ventas que ya se marcaron como recibidas + pagos de deuda
+        ventas_transf_confirmadas = sum(
+            (m.monto for m in movs
+             if m.tipo == 'VENTA' and m.forma_pago == 'TRANSFERENCIA'
+             and m.venta and m.venta.estado == 'CONFIRMADA'),
             Decimal('0.00'),
         )
-        pagos_transferencia = sum(
+        pagos_transf_confirmados = sum(
             (m.monto for m in movs if m.tipo == 'PAGO' and m.forma_pago == 'TRANSFERENCIA'),
             Decimal('0.00'),
         )
+        
+        total_transferencias = ventas_transf_confirmadas + pagos_transf_confirmados
 
-        total_transferencias = ventas_transferencia + pagos_transferencia
+        # Pendientes: ventas por transferencia que aún no se confirmaron
+        ventas_transf_pendientes = sum(
+            (m.monto for m in movs
+             if m.tipo == 'VENTA' and m.forma_pago == 'TRANSFERENCIA'
+             and m.venta and m.venta.estado == 'PENDIENTE'),
+            Decimal('0.00'),
+        )
 
         return {
             'monto_apertura': self.monto_apertura,
@@ -108,10 +119,11 @@ class Caja(models.Model):
             'ingresos': ingresos,
             'retiros': retiros,
             'esperado': esperado,
-            # Nuevos campos de transferencia
-            'ventas_transferencia': ventas_transferencia,
-            'pagos_transferencia': pagos_transferencia,
+            # Transferencias
+            'ventas_transferencia': ventas_transf_confirmadas,
+            'pagos_transferencia': pagos_transf_confirmados,
             'total_transferencias': total_transferencias,
+            'transferencias_pendientes': ventas_transf_pendientes,
         }
 
 

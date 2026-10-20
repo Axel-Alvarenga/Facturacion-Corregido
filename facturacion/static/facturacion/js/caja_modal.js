@@ -234,13 +234,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="card card-kpi p-3 h-100 border-info" style="border-width: 2px;">
                         <h6 class="text-info mb-3"><i class="bi bi-bank"></i> TRANSFERENCIAS (BANCO)</h6>
                         <div class="d-flex justify-content-between mb-2">
-                            <span class="texto-secundario">Ventas por transferencia:</span>
+                            <span class="texto-secundario">Ventas confirmadas:</span>
                             <span class="fw-bold text-cobrado">${esc(t.ventas_transferencia_fmt)}</span>
                         </div>
                         <div class="d-flex justify-content-between mb-3">
-                            <span class="texto-secundario">Pagos de deuda (transf.):</span>
+                            <span class="texto-secundario">Pagos de deuda:</span>
                             <span class="fw-bold text-cobrado">${esc(t.pagos_transferencia_fmt)}</span>
                         </div>
+                        
+                        ${t.transferencias_pendientes > 0 ? `
+                        <div class="d-flex justify-content-between mb-3 pb-2 border-bottom border-secondary">
+                            <span class="texto-secundario text-warning">Pendiente de confirmar:</span>
+                            <span class="fw-bold text-warning">${esc(t.transferencias_pendientes_fmt)}</span>
+                        </div>
+                        ` : ''}
+
                         <div class="mt-auto pt-2 border-top border-info">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="fw-bold">TOTAL EN BANCO:</span>
@@ -478,6 +486,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span><i class="bi bi-bank"></i> Total en Banco (no cuenta para caja):</span>
                     <strong>${esc(t.total_transferencias_fmt)}</strong>
                 </div>
+                ${t.transferencias_pendientes > 0 ? `
+                <div class="d-flex justify-content-between align-items-center mt-1">
+                    <span class="small text-warning">Pendiente de confirmar:</span>
+                    <strong class="small text-warning">${esc(t.transferencias_pendientes_fmt)}</strong>
+                </div>
+                ` : ''}
             </div>
         `;
 
