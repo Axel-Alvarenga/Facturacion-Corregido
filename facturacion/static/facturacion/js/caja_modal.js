@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================================
-    // Render: caja abierta
+    // Render: caja abierta (CON DISEÑO DE 2 COLUMNAS)
     // ============================================================
     function renderCajaAbierta(caja) {
         const t = caja.totales;
@@ -195,41 +195,58 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             </div>
 
-            <div class="row g-2 mb-3">
-                <div class="col-md-4">
-                    <div class="card card-kpi p-2 text-center">
-                        <div class="kpi-label small">Apertura</div>
-                        <div class="fw-bold">${esc(t.monto_apertura_fmt)}</div>
+            <div class="row g-3 mb-4">
+                <!-- COLUMNA IZQUIERDA: EFECTIVO -->
+                <div class="col-md-6">
+                    <div class="card card-kpi p-3 h-100 border-success" style="border-width: 2px;">
+                        <h6 class="text-success mb-3"><i class="bi bi-cash"></i> EFECTIVO (FÍSICO)</h6>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="texto-secundario">Apertura:</span>
+                            <span class="fw-bold">${esc(t.monto_apertura_fmt)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="texto-secundario">Ventas:</span>
+                            <span class="fw-bold text-cobrado">${esc(t.ventas_efectivo_fmt)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="texto-secundario">Pagos:</span>
+                            <span class="fw-bold text-cobrado">${esc(t.pagos_efectivo_fmt)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="texto-secundario">Ingresos:</span>
+                            <span class="fw-bold text-cobrado">${esc(t.ingresos_fmt)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="texto-secundario">Retiros:</span>
+                            <span class="fw-bold text-pendiente">${esc(t.retiros_fmt)}</span>
+                        </div>
+                        <div class="mt-auto pt-2 border-top border-success">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold">ESPERADO EN CAJA:</span>
+                                <span class="fs-4 fw-bold text-success">${esc(t.esperado_fmt)}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card card-kpi p-2 text-center">
-                        <div class="kpi-label small">Ventas efectivo</div>
-                        <div class="fw-bold text-cobrado">${esc(t.ventas_efectivo_fmt)}</div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card card-kpi p-2 text-center">
-                        <div class="kpi-label small">Pagos efectivo</div>
-                        <div class="fw-bold text-cobrado">${esc(t.pagos_efectivo_fmt)}</div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card card-kpi p-2 text-center">
-                        <div class="kpi-label small">Ingresos</div>
-                        <div class="fw-bold text-cobrado">${esc(t.ingresos_fmt)}</div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card card-kpi p-2 text-center">
-                        <div class="kpi-label small">Retiros</div>
-                        <div class="fw-bold text-pendiente">${esc(t.retiros_fmt)}</div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card card-kpi p-2 text-center" style="border: 2px solid var(--color-acento);">
-                        <div class="kpi-label small">Esperado</div>
-                        <div class="fw-bold fs-5">${esc(t.esperado_fmt)}</div>
+
+                <!-- COLUMNA DERECHA: TRANSFERENCIAS -->
+                <div class="col-md-6">
+                    <div class="card card-kpi p-3 h-100 border-info" style="border-width: 2px;">
+                        <h6 class="text-info mb-3"><i class="bi bi-bank"></i> TRANSFERENCIAS (BANCO)</h6>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="texto-secundario">Ventas por transferencia:</span>
+                            <span class="fw-bold text-cobrado">${esc(t.ventas_transferencia_fmt)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="texto-secundario">Pagos de deuda (transf.):</span>
+                            <span class="fw-bold text-cobrado">${esc(t.pagos_transferencia_fmt)}</span>
+                        </div>
+                        <div class="mt-auto pt-2 border-top border-info">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold">TOTAL EN BANCO:</span>
+                                <span class="fs-4 fw-bold text-info">${esc(t.total_transferencias_fmt)}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -432,9 +449,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const t = caja.totales;
         const movsAnulados = (caja.movimientos || []).filter(m => m.anulado).length;
-        const movsActivos = (caja.movimientos || []).filter(m => !m.anulado).length;
 
         let resumenHtml = `
+            <div class="mb-2"><strong class="text-success">💵 Efectivo (físico):</strong></div>
             <div><strong>Apertura:</strong> ${esc(t.monto_apertura_fmt)}</div>
             <div><strong>Ventas efectivo:</strong> ${esc(t.ventas_efectivo_fmt)}</div>
             <div><strong>Pagos efectivo:</strong> ${esc(t.pagos_efectivo_fmt)}</div>
@@ -448,14 +465,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     <i class="bi bi-exclamation-triangle"></i>
                     <span class="small">
                         ${movsAnulados} movimiento(s) anulado(s) excluido(s) del cálculo.
-                        (${movsActivos} activos)
                     </span>
                 </div>
             `;
         }
 
         resumenHtml += `
-            <div class="mt-2"><strong>Esperado:</strong> <span class="fs-5 text-warning">${esc(t.esperado_fmt)}</span></div>
+            <div class="mt-2 mb-3"><strong>Esperado en caja:</strong> <span class="fs-5 text-warning">${esc(t.esperado_fmt)}</span></div>
+            
+            <div class="alert alert-info mb-0 py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-bank"></i> Total en Banco (no cuenta para caja):</span>
+                    <strong>${esc(t.total_transferencias_fmt)}</strong>
+                </div>
+            </div>
         `;
 
         document.getElementById('cerrar-resumen').innerHTML = resumenHtml;

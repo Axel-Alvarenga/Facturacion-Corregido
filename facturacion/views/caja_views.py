@@ -57,6 +57,13 @@ def _caja_a_dict(caja, incluir_movimientos=False):
             'retiros_fmt': _formatear_gs(totales.get('retiros')),
             'esperado': _serializar_decimal(totales.get('esperado')),
             'esperado_fmt': _formatear_gs(totales.get('esperado')),
+            # Nuevos campos de transferencia
+            'ventas_transferencia': _serializar_decimal(totales.get('ventas_transferencia')),
+            'ventas_transferencia_fmt': _formatear_gs(totales.get('ventas_transferencia')),
+            'pagos_transferencia': _serializar_decimal(totales.get('pagos_transferencia')),
+            'pagos_transferencia_fmt': _formatear_gs(totales.get('pagos_transferencia')),
+            'total_transferencias': _serializar_decimal(totales.get('total_transferencias')),
+            'total_transferencias_fmt': _formatear_gs(totales.get('total_transferencias')),
         },
     }
 
@@ -88,10 +95,7 @@ def _caja_a_dict(caja, incluir_movimientos=False):
 
 @login_required(login_url='login')
 def caja_actual_api(request):
-    """Devuelve el estado actual de la caja (abierta o cerrada).
-    Si hay una caja abierta, devuelve el detalle + movimientos.
-    Si no, devuelve la última caja cerrada (para referencia) o null.
-    """
+    """Devuelve el estado actual de la caja (abierta o cerrada)."""
     caja = Caja.caja_abierta()
 
     if caja:
@@ -115,9 +119,7 @@ def caja_actual_api(request):
 
 @login_required(login_url='login')
 def caja_abrir_api(request):
-    """Abre una caja con el monto inicial especificado.
-    Solo puede haber una caja abierta a la vez.
-    """
+    """Abre una caja con el monto inicial especificado."""
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'Método no permitido.'}, status=405)
 

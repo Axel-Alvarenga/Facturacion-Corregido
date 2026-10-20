@@ -64,11 +64,12 @@ class Caja(models.Model):
         return cls.objects.filter(estado='ABIERTA').first()
 
     def calcular_totales(self):
-        """Calcula los totales de la caja a partir de los movimientos
-        NO anulados. Solo los movimientos en EFECTIVO suman al esperado.
+        """Calcula los totales de la caja. Separa efectivo (físico) de transferencias.
+        Solo los movimientos NO anulados.
         """
         movs = self.movimientos.filter(anulado=False)
 
+        # --- EFECTIVO (físico) ---
         ventas_efectivo = sum(
             (m.monto for m in movs if m.tipo == 'VENTA' and m.forma_pago == 'EFECTIVO'),
             Decimal('0.00'),
@@ -88,6 +89,18 @@ class Caja(models.Model):
 
         esperado = self.monto_apertura + ventas_efectivo + pagos_efectivo + ingresos - retiros
 
+        # --- TRANSFERENCIAS (digital) ---
+        ventas_transferencia = sum(
+            (m.monto for m in movs if m.tipo == 'VENTA' and m.forma_pago == 'TRANSFERENCIA'),
+            Decimal('0.00'),
+        )
+        pagos_transferencia = sum(
+            (m.monto for m in movs if m.tipo == 'PAGO' and m.forma_pago == 'TRANSFERENCIA'),
+            Decimal('0.00'),
+        )
+
+        total_transferencias = ventas_transferencia + pagos_transferencia
+
         return {
             'monto_apertura': self.monto_apertura,
             'ventas_efectivo': ventas_efectivo,
@@ -95,6 +108,10 @@ class Caja(models.Model):
             'ingresos': ingresos,
             'retiros': retiros,
             'esperado': esperado,
+            # Nuevos campos de transferencia
+            'ventas_transferencia': ventas_transferencia,
+            'pagos_transferencia': pagos_transferencia,
+            'total_transferencias': total_transferencias,
         }
 
 
