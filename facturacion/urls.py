@@ -20,6 +20,7 @@ urlpatterns = [
     path('productos/eliminar/<int:pk>/', views.producto_delete, name='producto_delete'),
 
     path('ventas/nueva/', views.crear_venta, name='crear_venta'),
+    path('ventas/transferencias-pendientes/', views.transferencias_pendientes_api, name='transferencias_pendientes_api'),
     path('ventas/<int:venta_id>/confirmada/', views.venta_confirmada, name='venta_confirmada'),
     path('ventas/<int:venta_id>/ticket/', views.ticket_venta, name='ticket_venta'),
     path('ventas/<int:venta_id>/confirmar-transferencia/', views.confirmar_transferencia, name='confirmar_transferencia'),

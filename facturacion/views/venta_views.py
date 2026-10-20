@@ -300,15 +300,7 @@ def venta_detalle_api(request, venta_id):
 
 @login_required(login_url='login')
 def anular_venta(request, venta_id):
-    """Anula una venta (borrado lógico).
-    - Solo superusuarios.
-    - Bloquea si la venta ya está anulada.
-    - Bloquea si es a crédito y ya tiene pagos.
-    - Si es a crédito sin pagos, resta el total de la deuda del cliente.
-    - Si la venta tenía un MovimientoCaja, lo marca como anulado.
-    El cambio queda registrado automáticamente en la auditoría
-    (signal post_save de Venta).
-    """
+    """Anula una venta (borrado lógico)."""
     if not request.user.is_superuser:
         messages.error(request, 'Solo los superusuarios pueden anular ventas.')
         return redirect('informes_ventas')
@@ -342,7 +334,7 @@ def anular_venta(request, venta_id):
             'anulada', 'fecha_anulacion', 'anulada_por', 'motivo_anulacion',
         ])
 
-        # ---- Marcar movimientos de caja como anulados ----
+        # Marcar movimientos de caja como anulados
         MovimientoCaja.objects.filter(venta=venta, anulado=False).update(
             anulado=True,
             fecha_anulacion=timezone.now(),
@@ -353,3 +345,28 @@ def anular_venta(request, venta_id):
         f'Venta #{venta.id} anulada. Motivo: {motivo_anulacion}'
     )
     return redirect('informes_ventas')
+
+
+@login_required(login_url='login')
+def transferencias_pendientes_api(request):
+    """Devuelve la lista de ventas por transferencia pendientes de confirmar."""
+    ventas = (
+        Venta.objects
+        .filter(forma_pago='TRANSFERENCIA', estado='PENDIENTE', anulada=False)
+        .select_related('cliente')
+        .order_by('fecha')
+    )
+
+    data = []
+    for v in ventas:
+        data.append({
+            'id': v.id,
+            'fecha': v.fecha.strftime('%d/%m/%Y %H:%M'),
+            'cliente': v.cliente.nombre,
+            'nombre_local': v.cliente.nombre_local or '',
+            'total': float(v.total),
+            'total_fmt': f'{v.total:,.0f}',
+            'confirmar_url': f'/ventas/{v.id}/confirmar-transferencia/',
+        })
+
+    return JsonResponse({'ok': True, 'ventas': data, 'total': len(data)})

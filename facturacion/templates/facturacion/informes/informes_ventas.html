@@ -131,6 +131,23 @@
 </div>
 {% endif %}
 
+<!-- Alerta de transferencias pendientes -->
+{% if transferencias_pendientes_count > 0 %}
+<div class="alert alert-warning mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <strong>Hay {{ transferencias_pendientes_count }} transferencia{{ transferencias_pendientes_count|pluralize:"s" }} pendiente{{ transferencias_pendientes_count|pluralize:"s" }} de confirmar.</strong>
+        <span class="texto-secundario small">
+            Confirmá las que ya recibiste.
+        </span>
+    </div>
+    <button type="button" class="btn btn-warning btn-sm fw-bold"
+            data-bs-toggle="modal" data-bs-target="#modalTransferenciasPendientes">
+        <i class="bi bi-list-check"></i> Ver y confirmar
+    </button>
+</div>
+{% endif %}
+
 <!-- Resumen por forma de pago -->
 <div class="row g-3 mb-4">
     <div class="col-md-4">
@@ -270,7 +287,7 @@
 {% endif %}
 
 <!-- ============================================================
-     MODAL: Detalle de venta (se llena por JS)
+     MODAL: Detalle de venta
      ============================================================ -->
 <div class="modal fade" id="modalDetalleVenta" tabindex="-1" aria-hidden="true"
      data-es-superuser="{% if user.is_superuser %}1{% else %}0{% endif %}">
@@ -295,7 +312,7 @@
 </div>
 
 <!-- ============================================================
-     MODAL: Confirmar transferencia
+     MODAL: Confirmar transferencia (individual)
      ============================================================ -->
 <div class="modal fade" id="modalConfirmarTransferencia" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -386,7 +403,34 @@
   </div>
 </div>
 
+<!-- ============================================================
+     MODAL: Transferencias pendientes (lista con botones)
+     ============================================================ -->
+<div class="modal fade" id="modalTransferenciasPendientes" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content crud-modal">
+      <div class="modal-header border-0">
+        <h4 class="modal-title">
+          <i class="bi bi-bank text-warning"></i> Transferencias pendientes de confirmar
+        </h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" id="transferencias-pendientes-body">
+        <div class="text-center py-4">
+          <div class="spinner-border text-warning" role="status"></div>
+          <div class="texto-secundario small mt-2">Cargando transferencias pendientes…</div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 d-flex justify-content-end">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% load static %}
 <script src="{% static 'facturacion/js/venta_detalle_modal.js' %}?v=3"></script>
-<script src="{% static 'facturacion/js/informes_ventas.js' %}?v=1"></script>
+<script src="{% static 'facturacion/js/informes_ventas.js' %}?v=2"></script>
 {% endblock %}
