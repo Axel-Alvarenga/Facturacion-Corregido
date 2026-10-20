@@ -176,5 +176,21 @@
 <script src="{% static 'facturacion/js/atajos.js' %}?v=3"></script>
 <script src="{% static 'facturacion/js/caja_modal.js' %}?v=1"></script>
 {% endif %}
+
+<!-- ============================================================
+     ATAJO DE PANTALLA COMPLETA (F11) PARA PYWEBVIEW
+     ============================================================ -->
+<script>
+    document.addEventListener('keydown', function(event) {
+        // F11 tiene el keyCode 122
+        if (event.keyCode === 122 || event.key === 'F11') {
+            event.preventDefault(); // Evita que el navegador recargue o haga cosas raras
+            // Llama a la función de Python que expusimos en el launcher
+            if (window.pywebview && window.pywebview.api) {
+                window.pywebview.api.toggle_fullscreen();
+            }
+        }
+    });
+</script>
 </body>
 </html>
