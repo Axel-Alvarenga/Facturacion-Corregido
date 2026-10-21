@@ -1,5 +1,10 @@
 import os
 import sys
+
+# Desactivar aceleración por hardware para evitar el error interno de WebKit
+# (Debe ir antes de importar webview)
+os.environ["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
+
 import time
 import threading
 import subprocess
@@ -39,10 +44,8 @@ def start_server():
 
     application = get_wsgi_application()
 
-    # Manejador custom para inyectar los archivos estáticos
     def static_handler(environ, start_response):
         path = environ['PATH_INFO']
-        
         if path.startswith('/static/'):
             for static_dir in settings.STATICFILES_DIRS:
                 static_file_path = os.path.join(static_dir, path.replace('/static/', ''))
@@ -55,19 +58,15 @@ def start_server():
                         return [content]
                     except Exception as e:
                         print(f"Error leyendo estático {static_file_path}: {e}")
-                        
         return application(environ, start_response)
 
     print("Iniciando servidor local en http://127.0.0.1:8000...")
-    # Iniciar Waitress con el manejador
     serve(static_handler, host='127.0.0.1', port=8000)
 
 def on_closed():
-    """Se ejecuta cuando el usuario cierra la ventana de PyWebView."""
     print("Cerrando la aplicación...")
     os._exit(0)
 
-# Clase para exponer funciones de Python al JavaScript
 class Api:
     def toggle_fullscreen(self):
         global window
@@ -75,7 +74,6 @@ class Api:
             window.toggle_fullscreen()
             
     def close_app(self):
-        """Permite cerrar la app desde JavaScript de forma segura."""
         on_closed()
 
 def main():
@@ -93,38 +91,37 @@ def main():
     server_url = 'http://127.0.0.1:8000'
     server_ready = False
     
-    # Intentar conectar por hasta 30 segundos
     for _ in range(30):
         try:
-            # Hacemos un ping a la raíz para ver si responde
             urllib.request.urlopen(server_url, timeout=1)
             server_ready = True
             break
         except Exception:
-            time.sleep(1) # Esperar 1 segundo y volver a intentar
+            time.sleep(1)
 
     if not server_ready:
-        print("ERROR: El servidor no respondió a tiempo.")
         messagebox.showerror("Error", "No se pudo iniciar el servidor. Revisá la terminal.")
         os._exit(1)
 
     print("¡Servidor listo! Abriendo ventana...")
     
-    # 4. Crear y lanzar la ventana en PANTALLA COMPLETA
+    # RUTA AL ICONO DEL LOGO
+    icon_path = os.path.join(BASE_DIR, 'facturacion', 'static', 'facturacion', 'img', 'logo.png')
+
+    # 4. Crear la ventana
     window = webview.create_window(
         title='Comedor A.R.M. - Facturación',
         url=server_url,
-        fullscreen=True,       # Inicia en pantalla completa
+        fullscreen=True,
         text_select=True, 
         confirm_close=False,   
         js_api=Api()
     )
     
-    # Asignar el evento de cierre
     window.events.closed += on_closed
 
-    # 5. Iniciar PyWebView
-    webview.start()
+    # 5. Iniciar PyWebView pasando el ícono en el start()
+    webview.start(icon=icon_path)
 
 if __name__ == '__main__':
     main()
