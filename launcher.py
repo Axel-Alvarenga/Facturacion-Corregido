@@ -198,6 +198,7 @@ def main():
 
     # 5. Iniciar PyWebView
     webview.start(icon=icon_path)
+    
 
 if __name__ == '__main__':
     main()
