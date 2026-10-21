@@ -29,45 +29,83 @@ sys.path.insert(0, BASE_DIR)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'sistema_facturacion.settings')
 
 def check_updates():
-    """Verifica si hay actualizaciones y ofrece actualizarlas al instante."""
+    """Verifica si hay actualizaciones y muestra una ventana personalizada."""
     try:
-        # 1. Buscar actualizaciones en silencio
         subprocess.run(["git", "fetch"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         result = subprocess.run(["git", "status", "-uno"], capture_output=True, text=True)
         
-        # 2. Si hay una actualización disponible
         if "behind" in result.stdout.lower() or "detrás" in result.stdout.lower():
-            # Preguntar al usuario con botones Sí/No
-            respuesta = messagebox.askyesno(
-                "Actualización disponible",
-                "Hay una nueva versión del sistema en GitHub.\n\n"
-                "¿Querés descargarla y reiniciar la aplicación ahora?"
-            )
+            # --- CREAR VENTANA PERSONALIZADA ---
+            root = tk.Tk()
+            root.title("Actualización Disponible")
             
-            if respuesta: # Si el usuario hace clic en "Sí"
+            # Colores basados en tu sistema
+            color_fondo = "#1E1E1E"
+            color_texto = "#EAEAEA"
+            color_acento = "#FFC107"
+            
+            root.configure(bg=color_fondo)
+            root.geometry("450x300")
+            root.resizable(False, False)
+            
+            # Centrar la ventana en la pantalla
+            root.eval('tk::PlaceWindow . center')
+
+            # Intentar cargar el logo
+            logo_path = os.path.join(BASE_DIR, 'facturacion', 'static', 'facturacion', 'img', 'logo.png')
+            if os.path.exists(logo_path):
+                try:
+                    from PIL import Image, ImageTk
+                    img = Image.open(logo_path)
+                    img = img.resize((80, 80), Image.Resampling.LANCZOS)
+                    photo = ImageTk.PhotoImage(img)
+                    lbl_logo = tk.Label(root, image=photo, bg=color_fondo)
+                    lbl_logo.image = photo 
+                    lbl_logo.pack(pady=10)
+                except ImportError:
+                    print("Pillow no instalado. El logo no se mostrará.")
+
+            # Título
+            tk.Label(root, text="¡Nueva versión disponible!", font=("Helvetica", 14, "bold"), 
+                     fg=color_acento, bg=color_fondo).pack(pady=(5, 5))
+            
+            # Mensaje
+            tk.Label(root, text="Hay cambios nuevos en el sistema.\n¿Querés actualizar y reiniciar ahora?", 
+                     font=("Helvetica", 10), fg=color_texto, bg=color_fondo).pack(pady=5)
+
+            # Botones
+            frame_botones = tk.Frame(root, bg=color_fondo)
+            frame_botones.pack(pady=20)
+
+            def actualizar():
+                root.destroy()
                 print("Descargando actualización...")
                 try:
-                    # Ejecutar git pull para traer los cambios
                     subprocess.run(["git", "pull"], check=True)
-                    
-                    # Avisar que se reiniciará
-                    messagebox.showinfo(
-                        "Actualización completada",
-                        "Los cambios se descargaron correctamente.\n"
-                        "La aplicación se reiniciará en un momento."
-                    )
-                    
-                    # Reiniciar el script actual para cargar el nuevo código
+                    messagebox.showinfo("Actualización completada", "La aplicación se reiniciará en un momento.")
                     python = sys.executable
                     os.execv(python, [python] + sys.argv)
-                    
                 except subprocess.CalledProcessError as e:
-                    messagebox.showerror(
-                        "Error al actualizar",
-                        f"No se pudo completar la actualización.\n"
-                        f"Revisá tu conexión o hacelo manualmente desde VS Code.\n\n"
-                        f"Error: {e}"
-                    )
+                    messagebox.showerror("Error al actualizar", f"No se pudo actualizar.\nError: {e}")
+
+            def cancelar():
+                root.destroy()
+
+            # Botón Actualizar (Amarillo)
+            btn_actualizar = tk.Button(frame_botones, text="Actualizar Ahora", command=actualizar,
+                                       bg=color_acento, fg="#121212", font=("Helvetica", 10, "bold"),
+                                       relief="flat", padx=15, pady=5, cursor="hand2")
+            btn_actualizar.pack(side=tk.LEFT, padx=10)
+
+            # Botón Cancelar (Gris)
+            btn_cancelar = tk.Button(frame_botones, text="Más tarde", command=cancelar,
+                                     bg="#424242", fg="#EAEAEA", font=("Helvetica", 10),
+                                     relief="flat", padx=15, pady=5, cursor="hand2")
+            btn_cancelar.pack(side=tk.LEFT, padx=10)
+
+            root.mainloop()
+            # --- FIN VENTANA PERSONALIZADA ---
+
     except Exception as e:
         print(f"No se pudo verificar actualizaciones: {e}")
 
@@ -113,7 +151,7 @@ class Api:
 def main():
     global window
 
-    # 1. Verificar actualizaciones (con opción de actualizar al instante)
+    # 1. Verificar actualizaciones
     check_updates()
 
     # 2. Iniciar el servidor en un hilo separado
@@ -139,6 +177,10 @@ def main():
 
     print("¡Servidor listo! Abriendo ventana...")
     
+    # --- FORZAR A QUE LOS ENLACES SE ABRAN EN LA MISMA VENTANA (Para PDFs) ---
+    webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = False
+    # ------------------------------------------------------------------------
+
     # RUTA AL ICONO DEL LOGO
     icon_path = os.path.join(BASE_DIR, 'facturacion', 'static', 'facturacion', 'img', 'logo.png')
 
@@ -154,7 +196,7 @@ def main():
     
     window.events.closed += on_closed
 
-    # 5. Iniciar PyWebView pasando el ícono en el start()
+    # 5. Iniciar PyWebView
     webview.start(icon=icon_path)
 
 if __name__ == '__main__':
