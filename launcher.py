@@ -1,8 +1,13 @@
 import os
 import sys
 
+# --- LIMPIAR ENTORNO DE SNAP PARA EVITAR CONFLICTOS CON WEBKIT ---
+os.environ.pop("GTK_PATH", None)
+os.environ.pop("GIO_MODULE_DIR", None)
+os.environ.pop("LD_LIBRARY_PATH", None)
+# -----------------------------------------------------------------
+
 # Desactivar aceleración por hardware para evitar el error interno de WebKit
-# (Debe ir antes de importar webview)
 os.environ["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
 
 import time
@@ -24,16 +29,45 @@ sys.path.insert(0, BASE_DIR)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'sistema_facturacion.settings')
 
 def check_updates():
-    """Verifica si hay actualizaciones en Git antes de abrir la app."""
+    """Verifica si hay actualizaciones y ofrece actualizarlas al instante."""
     try:
+        # 1. Buscar actualizaciones en silencio
         subprocess.run(["git", "fetch"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         result = subprocess.run(["git", "status", "-uno"], capture_output=True, text=True)
+        
+        # 2. Si hay una actualización disponible
         if "behind" in result.stdout.lower() or "detrás" in result.stdout.lower():
-            messagebox.showwarning(
+            # Preguntar al usuario con botones Sí/No
+            respuesta = messagebox.askyesno(
                 "Actualización disponible",
-                "Hay una nueva versión de la aplicación en GitHub.\n\n"
-                "Por favor, abrí Visual Studio Code, hacé 'git pull' y volvé a iniciar la app."
+                "Hay una nueva versión del sistema en GitHub.\n\n"
+                "¿Querés descargarla y reiniciar la aplicación ahora?"
             )
+            
+            if respuesta: # Si el usuario hace clic en "Sí"
+                print("Descargando actualización...")
+                try:
+                    # Ejecutar git pull para traer los cambios
+                    subprocess.run(["git", "pull"], check=True)
+                    
+                    # Avisar que se reiniciará
+                    messagebox.showinfo(
+                        "Actualización completada",
+                        "Los cambios se descargaron correctamente.\n"
+                        "La aplicación se reiniciará en un momento."
+                    )
+                    
+                    # Reiniciar el script actual para cargar el nuevo código
+                    python = sys.executable
+                    os.execv(python, [python] + sys.argv)
+                    
+                except subprocess.CalledProcessError as e:
+                    messagebox.showerror(
+                        "Error al actualizar",
+                        f"No se pudo completar la actualización.\n"
+                        f"Revisá tu conexión o hacelo manualmente desde VS Code.\n\n"
+                        f"Error: {e}"
+                    )
     except Exception as e:
         print(f"No se pudo verificar actualizaciones: {e}")
 
@@ -79,7 +113,7 @@ class Api:
 def main():
     global window
 
-    # 1. Verificar actualizaciones
+    # 1. Verificar actualizaciones (con opción de actualizar al instante)
     check_updates()
 
     # 2. Iniciar el servidor en un hilo separado
