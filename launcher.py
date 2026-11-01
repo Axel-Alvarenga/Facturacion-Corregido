@@ -1,6 +1,15 @@
 import os
 import sys
 
+# --- FORZAR ZONA HORARIA DE PARAGUAY ---
+os.environ['TZ'] = 'America/Asuncion'
+import time
+try:
+    time.tzset()  # Actualiza la zona horaria del proceso actual en Linux
+except AttributeError:
+    pass  # En Windows no existe tzset, pero en Ubuntu sí
+# ---------------------------------------
+
 # --- LIMPIAR ENTORNO DE SNAP PARA EVITAR CONFLICTOS CON WEBKIT ---
 os.environ.pop("GTK_PATH", None)
 os.environ.pop("GIO_MODULE_DIR", None)
@@ -10,7 +19,6 @@ os.environ.pop("LD_LIBRARY_PATH", None)
 # Desactivar aceleración por hardware para evitar el error interno de WebKit
 os.environ["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
 
-import time
 import threading
 import subprocess
 import urllib.request
@@ -28,89 +36,90 @@ sys.path.insert(0, BASE_DIR)
 # Configurar Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'sistema_facturacion.settings')
 
+def crear_ventana_personalizada(titulo, mensaje, botones):
+    root = tk.Tk()
+    root.title(titulo)
+    
+    color_fondo = "#1E1E1E"
+    color_texto = "#EAEAEA"
+    color_acento = "#FFC107"
+    
+    root.configure(bg=color_fondo)
+    root.geometry("450x320")
+    root.resizable(False, False)
+    root.eval('tk::PlaceWindow . center')
+
+    logo_path = os.path.join(BASE_DIR, 'facturacion', 'static', 'facturacion', 'img', 'logo.png')
+    if os.path.exists(logo_path):
+        try:
+            from PIL import Image, ImageTk
+            img = Image.open(logo_path)
+            img = img.resize((80, 80), Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(img)
+            lbl_logo = tk.Label(root, image=photo, bg=color_fondo)
+            lbl_logo.image = photo 
+            lbl_logo.pack(pady=10)
+        except ImportError:
+            pass
+
+    tk.Label(root, text=titulo, font=("Helvetica", 14, "bold"), 
+             fg=color_acento, bg=color_fondo).pack(pady=(5, 5))
+    tk.Label(root, text=mensaje, font=("Helvetica", 10), 
+             fg=color_texto, bg=color_fondo, justify="center").pack(pady=5)
+
+    frame_botones = tk.Frame(root, bg=color_fondo)
+    frame_botones.pack(pady=20)
+
+    for texto, accion, color_bg, color_fg in botones:
+        btn = tk.Button(frame_botones, text=texto, command=accion,
+                        bg=color_bg, fg=color_fg, font=("Helvetica", 10, "bold"),
+                        relief="flat", padx=15, pady=5, cursor="hand2")
+        btn.pack(side=tk.LEFT, padx=10)
+
+    root.mainloop()
+
 def check_updates():
-    """Verifica si hay actualizaciones y muestra una ventana personalizada."""
     try:
         subprocess.run(["git", "fetch"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         result = subprocess.run(["git", "status", "-uno"], capture_output=True, text=True)
         
         if "behind" in result.stdout.lower() or "detrás" in result.stdout.lower():
-            # --- CREAR VENTANA PERSONALIZADA ---
-            root = tk.Tk()
-            root.title("Actualización Disponible")
             
-            # Colores basados en tu sistema
-            color_fondo = "#1E1E1E"
-            color_texto = "#EAEAEA"
-            color_acento = "#FFC107"
-            
-            root.configure(bg=color_fondo)
-            root.geometry("450x300")
-            root.resizable(False, False)
-            
-            # Centrar la ventana en la pantalla
-            root.eval('tk::PlaceWindow . center')
-
-            # Intentar cargar el logo
-            logo_path = os.path.join(BASE_DIR, 'facturacion', 'static', 'facturacion', 'img', 'logo.png')
-            if os.path.exists(logo_path):
-                try:
-                    from PIL import Image, ImageTk
-                    img = Image.open(logo_path)
-                    img = img.resize((80, 80), Image.Resampling.LANCZOS)
-                    photo = ImageTk.PhotoImage(img)
-                    lbl_logo = tk.Label(root, image=photo, bg=color_fondo)
-                    lbl_logo.image = photo 
-                    lbl_logo.pack(pady=10)
-                except ImportError:
-                    print("Pillow no instalado. El logo no se mostrará.")
-
-            # Título
-            tk.Label(root, text="¡Nueva versión disponible!", font=("Helvetica", 14, "bold"), 
-                     fg=color_acento, bg=color_fondo).pack(pady=(5, 5))
-            
-            # Mensaje
-            tk.Label(root, text="Hay cambios nuevos en el sistema.\n¿Querés actualizar y reiniciar ahora?", 
-                     font=("Helvetica", 10), fg=color_texto, bg=color_fondo).pack(pady=5)
-
-            # Botones
-            frame_botones = tk.Frame(root, bg=color_fondo)
-            frame_botones.pack(pady=20)
-
             def actualizar():
-                root.destroy()
                 print("Descargando actualización...")
                 try:
                     subprocess.run(["git", "pull"], check=True)
-                    messagebox.showinfo("Actualización completada", "La aplicación se reiniciará en un momento.")
+                    
+                    crear_ventana_personalizada(
+                        "¡Actualización Exitosa!",
+                        "Los cambios se descargaron correctamente.\nLa aplicación se reiniciará en un momento.",
+                        [("Aceptar", lambda: os._exit(0), "#FFC107", "#121212")]
+                    )
+                    
                     python = sys.executable
                     os.execv(python, [python] + sys.argv)
                 except subprocess.CalledProcessError as e:
                     messagebox.showerror("Error al actualizar", f"No se pudo actualizar.\nError: {e}")
 
             def cancelar():
-                root.destroy()
+                import tkinter
+                for widget in tkinter._default_root.winfo_children():
+                    widget.destroy()
+                tkinter._default_root.destroy()
 
-            # Botón Actualizar (Amarillo)
-            btn_actualizar = tk.Button(frame_botones, text="Actualizar Ahora", command=actualizar,
-                                       bg=color_acento, fg="#121212", font=("Helvetica", 10, "bold"),
-                                       relief="flat", padx=15, pady=5, cursor="hand2")
-            btn_actualizar.pack(side=tk.LEFT, padx=10)
-
-            # Botón Cancelar (Gris)
-            btn_cancelar = tk.Button(frame_botones, text="Más tarde", command=cancelar,
-                                     bg="#424242", fg="#EAEAEA", font=("Helvetica", 10),
-                                     relief="flat", padx=15, pady=5, cursor="hand2")
-            btn_cancelar.pack(side=tk.LEFT, padx=10)
-
-            root.mainloop()
-            # --- FIN VENTANA PERSONALIZADA ---
+            crear_ventana_personalizada(
+                "Actualización Disponible",
+                "Hay una nueva versión del sistema en GitHub.\n¿Querés descargarla y reiniciar la aplicación ahora?",
+                [
+                    ("Actualizar Ahora", actualizar, "#FFC107", "#121212"),
+                    ("Más tarde", cancelar, "#424242", "#EAEAEA")
+                ]
+            )
 
     except Exception as e:
         print(f"No se pudo verificar actualizaciones: {e}")
 
 def start_server():
-    """Inicia el servidor Waitress en un hilo separado, sirviendo estáticos."""
     from django.core.wsgi import get_wsgi_application
     from django.conf import settings
 
@@ -148,17 +157,24 @@ class Api:
     def close_app(self):
         on_closed()
 
+    def open_downloads_folder(self):
+        """Abre la carpeta de Descargas del sistema operativo."""
+        try:
+            downloads_path = os.path.expanduser("~/Descargas")
+            if not os.path.exists(downloads_path):
+                downloads_path = os.path.expanduser("~/Downloads")
+            subprocess.Popen(["xdg-open", downloads_path])
+        except Exception as e:
+            print(f"Error al abrir carpeta de descargas: {e}")
+
 def main():
     global window
 
-    # 1. Verificar actualizaciones
     check_updates()
 
-    # 2. Iniciar el servidor en un hilo separado
     server_thread = threading.Thread(target=start_server, daemon=True)
     server_thread.start()
 
-    # 3. ESPERA ACTIVA: Esperar a que el servidor responda
     print("Esperando a que el servidor esté listo...")
     server_url = 'http://127.0.0.1:8000'
     server_ready = False
@@ -177,14 +193,10 @@ def main():
 
     print("¡Servidor listo! Abriendo ventana...")
     
-    # --- FORZAR A QUE LOS ENLACES SE ABRAN EN LA MISMA VENTANA (Para PDFs) ---
     webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = False
-    # ------------------------------------------------------------------------
 
-    # RUTA AL ICONO DEL LOGO
     icon_path = os.path.join(BASE_DIR, 'facturacion', 'static', 'facturacion', 'img', 'logo.png')
 
-    # 4. Crear la ventana
     window = webview.create_window(
         title='Comedor A.R.M. - Facturación',
         url=server_url,
@@ -196,9 +208,7 @@ def main():
     
     window.events.closed += on_closed
 
-    # 5. Iniciar PyWebView
     webview.start(icon=icon_path)
-    
 
 if __name__ == '__main__':
     main()

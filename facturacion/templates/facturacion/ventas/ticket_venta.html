@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% load tz %}<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -104,7 +104,7 @@
     <div class="line"></div>
 
     <p style="margin: 3px 0;"><strong>Ticket #:</strong> {{ venta.id }}</p>
-    <p style="margin: 3px 0;"><strong>Fecha:</strong> {{ venta.fecha|date:"d/m/Y H:i" }}</p>
+    <p style="margin: 3px 0;"><strong>Fecha:</strong> {{ venta.fecha|localtime|date:"d/m/Y H:i" }}</p>
     <p style="margin: 3px 0;"><strong>Cliente:</strong> {{ venta.cliente.nombre }}</p>
     {% if venta.cliente.nombre_local %}
     <p style="margin: 3px 0;"><strong>Local:</strong> {{ venta.cliente.nombre_local }}</p>
