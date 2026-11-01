@@ -639,7 +639,14 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('exito-cliente').textContent = venta.cliente;
         document.getElementById('exito-forma-pago').textContent = venta.forma_pago;
         document.getElementById('exito-fecha').textContent = venta.fecha;
-        document.getElementById('btn-imprimir-ticket').href = venta.ticket_url;
+
+        // ✅ FIX: abrir el ticket en pestaña nueva para no perder la pantalla de venta
+        const btnImprimir = document.getElementById('btn-imprimir-ticket');
+        if (btnImprimir) {
+            btnImprimir.href = venta.ticket_url;
+            btnImprimir.target = '_blank';
+            btnImprimir.rel = 'noopener';
+        }
 
         const avisoPendiente = document.getElementById('exito-aviso-pendiente');
         if (avisoPendiente) {

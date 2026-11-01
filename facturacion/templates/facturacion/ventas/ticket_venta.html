@@ -71,25 +71,40 @@
         }
         .footer strong { font-size: 12px; }
 
-        .boton-imprimir {
-            display: block;
-            width: 100%;
+        /* ---- Botones de acción ---- */
+        .acciones {
+            display: flex;
+            gap: 8px;
             margin-top: 15px;
+        }
+        .boton-accion {
+            flex: 1;
             padding: 10px;
-            background: #000;
-            color: #fff;
             border: none;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 13px;
             cursor: pointer;
             font-weight: bold;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-family: inherit;
+        }
+        .boton-imprimir {
+            background: #000;
+            color: #fff;
         }
         .boton-imprimir:hover { background: #333; }
+        .boton-volver {
+            background: #6c757d;
+            color: #fff;
+        }
+        .boton-volver:hover { background: #555; }
 
         @media print {
             body { margin: 0; padding: 5px; width: 80mm; }
             .no-print { display: none !important; }
-            .boton-imprimir { display: none !important; }
+            .acciones { display: none !important; }
         }
     </style>
 </head>
@@ -165,9 +180,27 @@
         <p style="margin: 5px 0;">Documento no válido como factura legal</p>
     </div>
 
-    <button class="boton-imprimir no-print" onclick="window.print()">
-        🖨️ Imprimir ticket
-    </button>
+    <!-- Botones de acción (no se imprimen) -->
+    <div class="acciones no-print">
+        <button type="button" class="boton-accion boton-imprimir" onclick="window.print()">
+            🖨️ Imprimir
+        </button>
+        <button type="button" class="boton-accion boton-volver" onclick="volver()">
+            ← Volver
+        </button>
+    </div>
+
+    <script>
+    function volver() {
+        // Si hay historial (venís de otra pantalla), volver atrás.
+        // Si no (abriste el ticket directo por URL), ir a nueva venta.
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = "{% url 'crear_venta' %}";
+        }
+    }
+    </script>
 
 </body>
 </html>
