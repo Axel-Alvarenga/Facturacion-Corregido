@@ -1,7 +1,7 @@
 from .auth_views import custom_login, custom_logout
 from .dashboard_views import dashboard
 from .cliente_views import (
-    cliente_list, cliente_create, cliente_update, cliente_delete, pagar_deuda,
+    cliente_list, cliente_create, cliente_update, cliente_delete, pagar_deuda, cliente_historial_ventas_api,
 )
 from .producto_views import (
     producto_list, producto_create, producto_update, producto_delete,
@@ -41,5 +41,5 @@ __all__ = [
     'informes_ventas', 'informes_export_excel',
     'auditoria_list', 'auditoria_detalle', 'auditoria_export_excel',
     'caja_actual_api', 'caja_abrir_api', 'caja_cerrar_api',
-    'caja_movimiento_api', 'caja_list_api', 'caja_detalle_api',
+    'caja_movimiento_api', 'caja_list_api', 'caja_detalle_api','cliente_historial_ventas_api',
 ]

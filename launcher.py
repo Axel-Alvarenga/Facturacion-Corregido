@@ -1,23 +1,22 @@
 import os
 import sys
-
-# --- FORZAR ZONA HORARIA DE PARAGUAY ---
-os.environ['TZ'] = 'America/Asuncion'
 import time
-try:
-    time.tzset()  # Actualiza la zona horaria del proceso actual en Linux
-except AttributeError:
-    pass  # En Windows no existe tzset, pero en Ubuntu sí
-# ---------------------------------------
 
-# --- LIMPIAR ENTORNO DE SNAP PARA EVITAR CONFLICTOS CON WEBKIT ---
-os.environ.pop("GTK_PATH", None)
-os.environ.pop("GIO_MODULE_DIR", None)
-os.environ.pop("LD_LIBRARY_PATH", None)
+# --- CONFIGURACIÓN MULTIPLATAFORMA DE ZONA HORARIA ---
+if os.name != 'nt':  # Si NO es Windows (es decir, es Linux)
+    os.environ['TZ'] = 'America/Asuncion'
+    try:
+        time.tzset()  # Actualiza la zona horaria del proceso en Linux
+    except AttributeError:
+        pass
+    
+    # --- LIMPIAR ENTORNO DE SNAP PARA EVITAR CONFLICTOS CON WEBKIT ---
+    os.environ.pop("GTK_PATH", None)
+    os.environ.pop("GIO_MODULE_DIR", None)
+    os.environ.pop("LD_LIBRARY_PATH", None)
+    # Desactivar aceleración por hardware para evitar errores de WebKit
+    os.environ["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
 # -----------------------------------------------------------------
-
-# Desactivar aceleración por hardware para evitar el error interno de WebKit
-os.environ["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
 
 import threading
 import subprocess
@@ -102,10 +101,12 @@ def check_updates():
                     messagebox.showerror("Error al actualizar", f"No se pudo actualizar.\nError: {e}")
 
             def cancelar():
-                import tkinter
-                for widget in tkinter._default_root.winfo_children():
-                    widget.destroy()
-                tkinter._default_root.destroy()
+                try:
+                    root = tk._default_root
+                    if root:
+                        root.destroy()
+                except Exception:
+                    pass
 
             crear_ventana_personalizada(
                 "Actualización Disponible",
@@ -120,6 +121,7 @@ def check_updates():
         print(f"No se pudo verificar actualizaciones: {e}")
 
 def start_server():
+    """Inicia el servidor Waitress en un hilo separado, sirviendo estáticos."""
     from django.core.wsgi import get_wsgi_application
     from django.conf import settings
 
@@ -128,8 +130,22 @@ def start_server():
     def static_handler(environ, start_response):
         path = environ['PATH_INFO']
         if path.startswith('/static/'):
+            # Buscamos el archivo en TODAS las carpetas de estáticos posibles
+            rutas_posibles = []
+            
+            # 1. Carpetas de STATICFILES_DIRS (desarrollo)
             for static_dir in settings.STATICFILES_DIRS:
-                static_file_path = os.path.join(static_dir, path.replace('/static/', ''))
+                rutas_posibles.append(os.path.join(static_dir, path.replace('/static/', '')))
+            
+            # 2. Carpeta STATIC_ROOT (producción / collectstatic)
+            if hasattr(settings, 'STATIC_ROOT') and settings.STATIC_ROOT:
+                rutas_posibles.append(os.path.join(settings.STATIC_ROOT, path.replace('/static/', '')))
+            
+            # 3. Carpeta por defecto del proyecto
+            rutas_posibles.append(os.path.join(settings.BASE_DIR, path.lstrip('/')))
+
+            # Probamos todas las rutas hasta encontrar el archivo
+            for static_file_path in rutas_posibles:
                 if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
                     try:
                         with open(static_file_path, 'rb') as f:
@@ -139,6 +155,8 @@ def start_server():
                         return [content]
                     except Exception as e:
                         print(f"Error leyendo estático {static_file_path}: {e}")
+                        
+        # Si no es un estático o no se encontró, pasar a Django
         return application(environ, start_response)
 
     print("Iniciando servidor local en http://127.0.0.1:8000...")
@@ -158,12 +176,16 @@ class Api:
         on_closed()
 
     def open_downloads_folder(self):
-        """Abre la carpeta de Descargas del sistema operativo."""
+        """Abre la carpeta de Descargas del sistema operativo (Windows o Linux)."""
         try:
-            downloads_path = os.path.expanduser("~/Descargas")
+            downloads_path = os.path.expanduser("~/Downloads")
             if not os.path.exists(downloads_path):
-                downloads_path = os.path.expanduser("~/Downloads")
-            subprocess.Popen(["xdg-open", downloads_path])
+                downloads_path = os.path.expanduser("~/Descargas") 
+
+            if os.name == 'nt':  # Windows
+                os.startfile(downloads_path)
+            else:  # Linux
+                subprocess.Popen(["xdg-open", downloads_path])
         except Exception as e:
             print(f"Error al abrir carpeta de descargas: {e}")
 
@@ -195,7 +217,11 @@ def main():
     
     webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = False
 
-    icon_path = os.path.join(BASE_DIR, 'facturacion', 'static', 'facturacion', 'img', 'logo.png')
+    # --- SELECCIÓN DE ICONO SEGÚN EL SISTEMA OPERATIVO ---
+    if os.name == 'nt':  # Windows requiere .ico
+        icon_path = os.path.join(BASE_DIR, 'facturacion', 'static', 'facturacion', 'img', 'logo.ico')
+    else:  # Linux acepta .png
+        icon_path = os.path.join(BASE_DIR, 'facturacion', 'static', 'facturacion', 'img', 'logo.png')
 
     window = webview.create_window(
         title='Comedor A.R.M. - Facturación',
@@ -208,7 +234,11 @@ def main():
     
     window.events.closed += on_closed
 
-    webview.start(icon=icon_path)
+    try:
+        webview.start(icon=icon_path)
+    except Exception as e:
+        print(f"Aviso: No se pudo cargar el ícono ({e}). Iniciando sin ícono.")
+        webview.start()
 
 if __name__ == '__main__':
     main()

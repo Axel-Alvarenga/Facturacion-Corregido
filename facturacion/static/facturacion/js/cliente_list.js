@@ -13,10 +13,27 @@ document.addEventListener('DOMContentLoaded', function () {
             const boton = event.relatedTarget;
             if (!boton) return;
 
-            document.getElementById('modalEliminarClienteNombre').textContent =
-                boton.getAttribute('data-nombre');
-            document.getElementById('formEliminarCliente').action =
-                boton.getAttribute('data-url');
+            const clienteId = boton.getAttribute('data-id');
+            const fila = document.getElementById('fila-cliente-' + clienteId);
+            
+            let nombreCliente = 'este cliente';
+            let urlEliminar = '';
+
+            // Si encontramos la fila, sacamos el nombre de ahí
+            if (fila) {
+                nombreCliente = fila.dataset.nombre || 'este cliente';
+            }
+            
+            // La URL la armamos dinámicamente o la leemos del botón
+            const urlData = boton.getAttribute('data-url');
+            if (urlData) {
+                urlEliminar = urlData;
+            } else {
+                urlEliminar = '/clientes/' + clienteId + '/eliminar/';
+            }
+
+            document.getElementById('modalEliminarClienteNombre').textContent = nombreCliente;
+            document.getElementById('formEliminarCliente').action = urlEliminar;
         });
     }
 

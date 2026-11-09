@@ -1,27 +1,58 @@
 from decimal import Decimal
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Sum, Count, Q
 from django.db.models.deletion import ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.core.paginator import Paginator
 from ..models import Cliente, PagoDeuda, Venta, Caja, MovimientoCaja
 from ..forms import ClienteForm, PagoDeudaForm
+from ..services import aplicar_pago_fifo, registrar_movimiento_caja_pago
 
 
 def _contexto_lista(request, form_modal=None, modal_activo=None, objeto_editar=None):
-    clientes = Cliente.objects.all()
-    error_eliminar = None
+    """Optimizado: obtiene KPIs en una consulta y aplica buscador + paginación."""
+    
+    # --- BUSCADOR Y FILTROS ---
+    buscar = request.GET.get('buscar', '').strip()
+    solo_con_deuda = request.GET.get('solo_con_deuda', '') == '1'
+    
+    clientes_qs = Cliente.objects.all().order_by('nombre_local', 'nombre')
+    
+    if buscar:
+        clientes_qs = clientes_qs.filter(
+            Q(nombre__icontains=buscar) |
+            Q(nombre_local__icontains=buscar) |
+            Q(telefono__icontains=buscar)
+        )
+        
+    if solo_con_deuda:
+        clientes_qs = clientes_qs.filter(deuda__gt=0)
 
+    # --- KPIs (se calculan sobre el queryset filtrado) ---
+    totales = clientes_qs.aggregate(
+        con_deuda=Count('id', filter=Q(deuda__gt=0)),
+        monto_deuda=Sum('deuda', filter=Q(deuda__gt=0))
+    )
+
+    # --- PAGINACIÓN ---
+    paginator = Paginator(clientes_qs, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    # --- MANEJO DE ERRORES DE ELIMINACIÓN ---
+    error_eliminar = None
     if request.GET.get('error') == 'no_se_puede_eliminar':
         error_eliminar = (
             f"No se puede eliminar a \"{request.GET.get('nombre', '')}\": ya tiene ventas "
             "registradas, y borrarlo perdería ese historial."
         )
 
+    # --- LÓGICA DE MODALES ---
     if modal_activo is None:
         abrir_modal = request.GET.get('abrir_modal', '').strip()
         if abrir_modal == 'crear':
@@ -39,14 +70,17 @@ def _contexto_lista(request, form_modal=None, modal_activo=None, objeto_editar=N
                 pass
 
     return {
-        'clientes': clientes,
-        'total_clientes': clientes.count(),
-        'clientes_con_deuda': clientes.filter(deuda__gt=0).count(),
-        'monto_total_deuda': clientes.filter(deuda__gt=0).aggregate(total=Sum('deuda'))['total'] or Decimal('0.00'),
+        'clientes': page_obj.object_list,
+        'page_obj': page_obj,
+        'total_clientes': clientes_qs.count(),
+        'clientes_con_deuda': totales['con_deuda'] or 0,
+        'monto_total_deuda': totales['monto_deuda'] or Decimal('0.00'),
         'error_eliminar': error_eliminar,
         'modal_activo': modal_activo,
         'form_modal': form_modal,
         'objeto_editar': objeto_editar,
+        'buscar': buscar,
+        'solo_con_deuda': solo_con_deuda,
     }
 
 
@@ -241,27 +275,16 @@ def pagar_deuda(request, cliente_id):
                 )
 
             with transaction.atomic():
-                pagos_creados = _aplicar_pago_fifo(
+                pagos_creados = aplicar_pago_fifo(
                     cliente, monto_pago, request.user, forma_pago,
                 )
 
                 cliente.deuda -= monto_pago
                 cliente.save(update_fields=['deuda'])
 
-                # ---- INTEGRACIÓN CON CAJA ----
-                # Un solo MovimientoCaja consolidado (no uno por cada PagoDeuda)
-                caja = Caja.caja_abierta()
-                if caja:
-                    MovimientoCaja.objects.create(
-                        caja=caja,
-                        tipo='PAGO',
-                        forma_pago=forma_pago,
-                        monto=monto_pago,
-                        descripcion=f'Pago de deuda - {cliente.nombre} - {dict(PagoDeuda.FORMA_PAGO_CHOICES)[forma_pago]}',
-                        usuario=request.user,
-                        pago_deuda=pagos_creados[0] if pagos_creados else None,
-                    )
-                # ---- FIN INTEGRACIÓN ----
+                registrar_movimiento_caja_pago(
+                    cliente, monto_pago, forma_pago, request.user, pagos_creados
+                )
 
             messages.success(
                 request,
@@ -283,59 +306,47 @@ def pagar_deuda(request, cliente_id):
     })
 
 
-def _aplicar_pago_fifo(cliente, monto_total, usuario, forma_pago='EFECTIVO'):
-    """Aplica un pago a las ventas a crédito del cliente en orden FIFO.
-    Crea un PagoDeuda por cada venta afectada.
-    Devuelve la lista de PagoDeuda creados.
-    """
-    monto_restante = Decimal(monto_total)
-    pagos_creados = []
-
-    ventas_credito = (
-        Venta.objects
-        .filter(cliente=cliente, forma_pago='CREDITO', anulada=False)
-        .order_by('fecha')
-    )
-
-    for venta in ventas_credito:
-        if monto_restante <= 0:
-            break
-
-        pagado_venta = (
-            PagoDeuda.objects
-            .filter(venta=venta)
-            .aggregate(total=Sum('monto'))['total']
-            or Decimal('0.00')
-        )
-        saldo_venta = venta.total - pagado_venta
-
-        if saldo_venta <= 0:
-            continue
-
-        monto_aplicar = min(monto_restante, saldo_venta)
-
-        pago = PagoDeuda.objects.create(
-            cliente=cliente,
-            venta=venta,
-            monto=monto_aplicar,
-            forma_pago=forma_pago,
-            registrado_por=usuario,
-        )
-        pagos_creados.append(pago)
-        monto_restante -= monto_aplicar
-
-    if monto_restante > 0:
-        pago = PagoDeuda.objects.create(
-            cliente=cliente,
-            venta=None,
-            monto=monto_restante,
-            forma_pago=forma_pago,
-            registrado_por=usuario,
-            observacion='Saldo a favor (pago mayor a la deuda)',
-        )
-        pagos_creados.append(pago)
-
-    return pagos_creados
+@login_required(login_url='login')
+def cliente_historial_ventas_api(request, cliente_id):
+    """Devuelve el historial de ventas del cliente en JSON para el modal."""
+    cliente = get_object_or_404(Cliente, pk=cliente_id)
+    
+    ventas = Venta.objects.filter(cliente=cliente).prefetch_related(
+        'detalles__producto', 'items_manuales'
+    ).order_by('-fecha')
+    
+    data = []
+    for v in ventas:
+        # Armar el resumen de productos de esta venta
+        productos = []
+        for d in v.detalles.all():
+            productos.append(f"{d.cantidad}x {d.producto.nombre}")
+        for m in v.items_manuales.all():
+            productos.append(f"1x {m.descripcion} (manual)")
+            
+        productos_str = ", ".join(productos) if productos else "(sin ítems)"
+        
+        data.append({
+            'id': v.id,
+            'fecha': v.fecha.strftime('%d/%m/%Y %H:%M'),
+            'forma_pago': v.get_forma_pago_display(),
+            'estado': v.get_estado_display(),
+            'estado_raw': v.estado,
+            'total': float(v.total),
+            'total_fmt': f'{v.total:,.0f}',
+            'anulada': v.anulada,
+            'productos': productos_str,
+        })
+        
+    return JsonResponse({
+        'ok': True,
+        'cliente': {
+            'nombre': cliente.nombre,
+            'nombre_local': cliente.nombre_local,
+            'deuda_fmt': f'{cliente.deuda:,.0f}'
+        },
+        'ventas': data
+    })
 
 
 def _form_errors_to_dict(form):
