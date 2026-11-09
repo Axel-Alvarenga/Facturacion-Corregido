@@ -23,7 +23,6 @@
   <div class="row g-3 align-items-end">
     <div class="col-12 col-md-6">
       <label class="form-label fw-bold"><i class="bi bi-search"></i> Buscar cliente</label>
-      <!-- ID en el input para el JS -->
       <input type="text" name="buscar" id="input-buscar-clientes" class="form-control" value="{{ buscar }}" placeholder="Escribí para buscar...">
     </div>
     <div class="col-12 col-md-3">
@@ -31,10 +30,6 @@
         <input class="form-check-input" type="checkbox" id="solo_con_deuda" name="solo_con_deuda" value="1" {% if solo_con_deuda %}checked{% endif %}>
         <label class="form-check-label fw-bold" for="solo_con_deuda"><i class="bi bi-filter"></i> Solo con deuda</label>
       </div>
-    </div>
-    <!-- Ocultamos el botón filtrar porque será automático -->
-    <div class="col-12 col-md-3 d-none">
-      <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-funnel"></i> Filtrar</button>
     </div>
   </div>
 </form>
@@ -173,12 +168,143 @@
 </nav>
 {% endif %}
 
-<!-- ... (Tus modales de Cliente, Eliminar e Historial quedan exactamente igual) ... -->
+<!-- ============================================================
+     MODAL: CREAR / EDITAR CLIENTE
+     ============================================================ -->
+<div class="modal fade" id="modalCliente" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content crud-modal">
+      <form id="form-cliente-modal" method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="origen" value="modal_listado">
+        <input type="hidden" name="confirmar_duplicado" id="cliente-confirmar-duplicado" value="">
+
+        <div class="modal-header border-0">
+          <h4 class="modal-title" id="modalClienteTitulo">
+            <i class="bi bi-person-plus text-warning"></i>
+            <span id="modalClienteTituloTexto">Nuevo Cliente</span>
+          </h4>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="cliente-aviso-duplicado" class="alert alert-warning" style="display: none;">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Cliente duplicado.</strong>
+            <span id="cliente-aviso-duplicado-texto"></span>
+            <button type="button" class="btn btn-warning btn-sm fw-bold mt-2 d-block"
+                    id="btn-confirmar-duplicado">
+              <i class="bi bi-check-circle"></i> Sí, crear de todos modos
+            </button>
+          </div>
+
+          <div class="mb-3">
+            <label for="id_nombre_cliente" class="form-label fw-bold">Nombre *</label>
+            <input type="text" name="nombre" id="id_nombre_cliente"
+                   class="form-control" placeholder="Ej: Juan Pérez" autocomplete="off" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="id_nombre_local" class="form-label fw-bold">Local *</label>
+            <input type="text" name="nombre_local" id="id_nombre_local"
+                   class="form-control" placeholder="Ej: Almacén Don Pedro o Particular" autocomplete="off" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="id_tipo_pago" class="form-label fw-bold">Preferencia de pago</label>
+            <select name="tipo_pago" id="id_tipo_pago" class="form-select">
+              <option value="CONTADO">Contado</option>
+              <option value="CREDITO">Crédito</option>
+              <option value="TRANSFERENCIA">Transferencia</option>
+            </select>
+          </div>
+
+          <div class="mb-3" id="bloque-frecuencia-pago" style="display: none;">
+            <label for="id_frecuencia_pago" class="form-label fw-bold">
+              <i class="bi bi-calendar-week text-warning"></i> Frecuencia de pago del crédito
+            </label>
+            <select name="frecuencia_pago" id="id_frecuencia_pago" class="form-select">
+              <option value="SEMANAL">Semanal</option>
+              <option value="MENSUAL">Mensual</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="id_telefono" class="form-label fw-bold">Teléfono (opcional)</label>
+            <input type="text" name="telefono" id="id_telefono"
+                   class="form-control" placeholder="Ej: 0981 123 456" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="modal-footer border-0 d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle"></i> Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary fw-bold">
+            <i class="bi bi-check-circle"></i> Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: ELIMINAR CLIENTE
+     ============================================================ -->
+<div class="modal fade" id="modalEliminarCliente" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content crud-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">
+          <i class="bi bi-exclamation-triangle text-danger"></i> Eliminar cliente
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        ¿Seguro que querés eliminar a "<span id="modalEliminarClienteNombre" class="fw-bold"></span>"?
+      </div>
+      <div class="modal-footer border-0 d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form id="formEliminarCliente" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Eliminar
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: HISTORIAL DE VENTAS
+     ============================================================ -->
+<div class="modal fade" id="modalHistorialVentas" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content crud-modal">
+      <div class="modal-header border-0">
+        <h4 class="modal-title">
+          <i class="bi bi-clock-history text-warning"></i> Historial de Ventas
+        </h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <!-- CORREGIDO: El ID ahora coincide con el que busca cliente_historial.js -->
+      <div class="modal-body" id="historial-modal-body">
+        <!-- Se llena con JS -->
+      </div>
+      <div class="modal-footer border-0 d-flex justify-content-end">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Scripts -->
-<script src="{% static 'facturacion/js/cliente_modal.js' %}?v=5"></script>
+<script src="{% static 'facturacion/js/cliente_modal.js' %}?v=6"></script>
 <script src="{% static 'facturacion/js/cliente_list.js' %}?v=3"></script>
-<script src="{% static 'facturacion/js/cliente_historial.js' %}?v=3"></script>
-<!-- NUEVO SCRIPT -->
+<script src="{% static 'facturacion/js/cliente_historial.js' %}?v=4"></script>
 <script src="{% static 'facturacion/js/clientes_buscador.js' %}?v=1"></script>
 {% endblock %}

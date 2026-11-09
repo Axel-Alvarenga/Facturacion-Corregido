@@ -1,7 +1,5 @@
 /* =========================================================
    Comedor A.R.M. - Modal de Cliente (crear / editar)
-   - Detección de duplicado sin cerrar el modal
-   - Manejo robusto de respuestas no-JSON
    ========================================================= */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -10,8 +8,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const form = document.getElementById('form-cliente-modal');
     const titulo = document.getElementById('modalClienteTituloTexto');
-    
-    // Corregido: seleccionar el ícono dentro del título
     const iconoTitulo = modalEl.querySelector('.modal-title i');
 
     const inputNombre = document.getElementById('id_nombre_cliente');
@@ -33,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let enviando = false;
 
+    // Lógica para mostrar/ocultar frecuencia
     function actualizarVisibilidadFrecuencia() {
         if (selectTipoPago && selectTipoPago.value === 'CREDITO') {
             bloqueFrecuencia.style.display = 'block';
@@ -45,16 +42,18 @@ document.addEventListener('DOMContentLoaded', function () {
         selectTipoPago.addEventListener('change', actualizarVisibilidadFrecuencia);
     }
 
+    // Configurar el modal al abrirse
     modalEl.addEventListener('show.bs.modal', function (event) {
         const boton = event.relatedTarget;
-        const modo = boton ? boton.dataset.modo : 'crear';
+        if (!boton) return; // Si no hay botón, no hacer nada
+
+        const modo = boton.dataset.modo || 'crear';
 
         if (avisoDuplicado) avisoDuplicado.style.display = 'none';
         if (confirmarDuplicadoInput) confirmarDuplicadoInput.value = '';
 
         if (modo === 'editar') {
             const clienteId = boton.dataset.id;
-            // Buscamos la fila de la tabla para extraer los datos de forma segura
             const fila = document.getElementById('fila-cliente-' + clienteId);
             
             titulo.textContent = 'Editar Cliente';
@@ -62,7 +61,6 @@ document.addEventListener('DOMContentLoaded', function () {
             form.action = urlsBase.editar + clienteId + '/editar/';
 
             if (fila) {
-                // Leemos los datos de la fila
                 inputNombre.value = fila.dataset.nombre || '';
                 inputNombreLocal.value = fila.dataset.nombreLocal || '';
                 inputTelefono.value = fila.dataset.telefono || '';
@@ -95,9 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
         inputNombre.focus();
     });
 
-    // ============================================
-    // Envío por AJAX (con manejo de duplicado)
-    // ============================================
+    // Función para enviar el formulario por AJAX
     function enviarFormulario() {
         if (enviando) return;
         enviando = true;
@@ -106,9 +102,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         fetch(form.action, {
             method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-            },
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData,
             credentials: 'same-origin',
         })
@@ -149,6 +143,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Validación y envío al hacer submit
     form.addEventListener('submit', function (e) {
         e.preventDefault();
 

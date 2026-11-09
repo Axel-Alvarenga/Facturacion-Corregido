@@ -79,10 +79,15 @@ def crear_ventana_personalizada(titulo, mensaje, botones):
 
 def check_updates():
     try:
+        # 1. Traer los cambios remotos en silencio
         subprocess.run(["git", "fetch"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        result = subprocess.run(["git", "status", "-uno"], capture_output=True, text=True)
         
-        if "behind" in result.stdout.lower() or "detrás" in result.stdout.lower():
+        # 2. Comparar el hash local con el remoto
+        local = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+        remoto = subprocess.run(["git", "rev-parse", "origin/master"], capture_output=True, text=True).stdout.strip()
+        
+        # 3. Si los hashes son diferentes, hay una actualización disponible
+        if local != remoto and local != "" and remoto != "":
             
             def actualizar():
                 print("Descargando actualización...")
