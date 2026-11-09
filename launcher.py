@@ -87,16 +87,27 @@ def check_updates():
             def actualizar():
                 print("Descargando actualización...")
                 try:
+                    # 1. Traer los cambios de código
                     subprocess.run(["git", "pull"], check=True)
+                    
+                    # 2. Preparar los archivos estáticos (CSS/JS)
+                    print("Recolectando estáticos...")
+                    subprocess.run([sys.executable, "manage.py", "collectstatic", "--noinput"], check=True)
+                    
+                    # 3. Aplicar migraciones de base de datos (si las hubiera)
+                    print("Aplicando migraciones...")
+                    subprocess.run([sys.executable, "manage.py", "migrate"], check=True)
                     
                     crear_ventana_personalizada(
                         "¡Actualización Exitosa!",
-                        "Los cambios se descargaron correctamente.\nLa aplicación se reiniciará en un momento.",
+                        "Los cambios se instalaron correctamente.\nLa aplicación se reiniciará en un momento.",
                         [("Aceptar", lambda: os._exit(0), "#FFC107", "#121212")]
                     )
                     
+                    # 4. Reiniciar la app con el código nuevo
                     python = sys.executable
                     os.execv(python, [python] + sys.argv)
+                    
                 except subprocess.CalledProcessError as e:
                     messagebox.showerror("Error al actualizar", f"No se pudo actualizar.\nError: {e}")
 
@@ -130,7 +141,6 @@ def start_server():
     def static_handler(environ, start_response):
         path = environ['PATH_INFO']
         if path.startswith('/static/'):
-            # Buscamos el archivo en TODAS las carpetas de estáticos posibles
             rutas_posibles = []
             
             # 1. Carpetas de STATICFILES_DIRS (desarrollo)
@@ -156,7 +166,6 @@ def start_server():
                     except Exception as e:
                         print(f"Error leyendo estático {static_file_path}: {e}")
                         
-        # Si no es un estático o no se encontró, pasar a Django
         return application(environ, start_response)
 
     print("Iniciando servidor local en http://127.0.0.1:8000...")
