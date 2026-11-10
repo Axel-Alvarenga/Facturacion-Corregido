@@ -1,16 +1,18 @@
 """
 Script para hacer backup de la base de datos y subirlo a Google Drive.
 Uso: python backup_drive.py
-
-Flujo:
-1. Genera un backup local con django-dbbackup (carpeta backups/)
-2. Busca el archivo .sqlite3 más reciente
-3. Lo sube a la carpeta "Facturacion_Backups" en tu Google Drive
 """
 import os
 import sys
 import subprocess
 from pathlib import Path
+
+# --- FORZAR UTF-8 EN WINDOWS PARA EVITAR ERRORES CON EMOJIS ---
+if os.name == 'nt':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+# -------------------------------------------------------------
 
 from gdrive_core import GDriveCore
 
@@ -26,6 +28,7 @@ def generar_backup_local():
         [sys.executable, 'manage.py', 'dbbackup'],
         capture_output=True,
         text=True,
+        encoding='utf-8',  # <--- Importante para leer la salida del comando
     )
 
     if resultado.returncode != 0:

@@ -89,13 +89,18 @@
                 </li>
                 {% endif %}
             </ul>
-            <div class="d-flex mt-2 mt-xl-0">
+            <div class="d-flex mt-2 mt-xl-0 gap-2">
                 <form action="{% url 'logout' %}" method="POST" class="d-inline">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-outline-light btn-sm">
                         <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
                     </button>
                 </form>
+                
+                <!-- BOTÓN PARA CERRAR LA APP NATIVA -->
+                <button type="button" class="btn btn-danger btn-sm" onclick="salirApp()" title="Cerrar la aplicación">
+                    <i class="bi bi-power"></i> Salir
+                </button>
             </div>
         </div>
     </div>
@@ -182,9 +187,10 @@
 {% endif %}
 
 <!-- ============================================================
-     ATAJO DE PANTALLA COMPLETA (F11) PARA PYWEBVIEW
+     FUNCIONES DE LA VENTANA NATIVA (PANTALLA COMPLETA Y SALIR)
      ============================================================ -->
 <script>
+    // Función para pantalla completa con F11
     document.addEventListener('keydown', function(event) {
         if (event.keyCode === 122 || event.key === 'F11') {
             event.preventDefault();
@@ -193,6 +199,16 @@
             }
         }
     });
+
+    // Función para cerrar la aplicación (dispara la pregunta del backup)
+    function salirApp() {
+        if (window.pywebview && window.pywebview.api) {
+            window.pywebview.api.close_app();
+        } else {
+            // Si se abre desde un navegador web normal, no hace nada
+            alert("Esta función solo está disponible en la aplicación de escritorio.");
+        }
+    }
 </script>
 </body>
 </html>

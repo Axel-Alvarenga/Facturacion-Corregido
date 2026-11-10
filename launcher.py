@@ -6,15 +6,13 @@ import time
 if os.name != 'nt':  # Si NO es Windows (es decir, es Linux)
     os.environ['TZ'] = 'America/Asuncion'
     try:
-        time.tzset()  # Actualiza la zona horaria del proceso en Linux
+        time.tzset()
     except AttributeError:
         pass
     
-    # --- LIMPIAR ENTORNO DE SNAP PARA EVITAR CONFLICTOS CON WEBKIT ---
     os.environ.pop("GTK_PATH", None)
     os.environ.pop("GIO_MODULE_DIR", None)
     os.environ.pop("LD_LIBRARY_PATH", None)
-    # Desactivar aceleración por hardware para evitar errores de WebKit
     os.environ["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
 # -----------------------------------------------------------------
 
@@ -27,12 +25,10 @@ from waitress import serve
 import mimetypes
 import webview
 
-# Asegurarnos de que estamos en el directorio del proyecto
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(BASE_DIR)
 sys.path.insert(0, BASE_DIR)
 
-# Configurar Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'sistema_facturacion.settings')
 
 def crear_ventana_personalizada(titulo, mensaje, botones):
@@ -44,7 +40,7 @@ def crear_ventana_personalizada(titulo, mensaje, botones):
     color_acento = "#FFC107"
     
     root.configure(bg=color_fondo)
-    root.geometry("450x320")
+    root.geometry("480x340")
     root.resizable(False, False)
     root.eval('tk::PlaceWindow . center')
 
@@ -79,28 +75,17 @@ def crear_ventana_personalizada(titulo, mensaje, botones):
 
 def check_updates():
     try:
-        # 1. Traer los cambios remotos en silencio
         subprocess.run(["git", "fetch"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # 2. Comparar el hash local con el remoto
         local = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
         remoto = subprocess.run(["git", "rev-parse", "origin/master"], capture_output=True, text=True).stdout.strip()
         
-        # 3. Si los hashes son diferentes, hay una actualización disponible
         if local != remoto and local != "" and remoto != "":
             
             def actualizar():
                 print("Descargando actualización...")
                 try:
-                    # 1. Traer los cambios de código
                     subprocess.run(["git", "pull"], check=True)
-                    
-                    # 2. Preparar los archivos estáticos (CSS/JS)
-                    print("Recolectando estáticos...")
                     subprocess.run([sys.executable, "manage.py", "collectstatic", "--noinput"], check=True)
-                    
-                    # 3. Aplicar migraciones de base de datos (si las hubiera)
-                    print("Aplicando migraciones...")
                     subprocess.run([sys.executable, "manage.py", "migrate"], check=True)
                     
                     crear_ventana_personalizada(
@@ -109,7 +94,6 @@ def check_updates():
                         [("Aceptar", lambda: os._exit(0), "#FFC107", "#121212")]
                     )
                     
-                    # 4. Reiniciar la app con el código nuevo
                     python = sys.executable
                     os.execv(python, [python] + sys.argv)
                     
@@ -137,29 +121,20 @@ def check_updates():
         print(f"No se pudo verificar actualizaciones: {e}")
 
 def start_server():
-    """Inicia el servidor Waitress en un hilo separado, sirviendo estáticos."""
     from django.core.wsgi import get_wsgi_application
     from django.conf import settings
-
     application = get_wsgi_application()
 
     def static_handler(environ, start_response):
         path = environ['PATH_INFO']
         if path.startswith('/static/'):
             rutas_posibles = []
-            
-            # 1. Carpetas de STATICFILES_DIRS (desarrollo)
             for static_dir in settings.STATICFILES_DIRS:
                 rutas_posibles.append(os.path.join(static_dir, path.replace('/static/', '')))
-            
-            # 2. Carpeta STATIC_ROOT (producción / collectstatic)
             if hasattr(settings, 'STATIC_ROOT') and settings.STATIC_ROOT:
                 rutas_posibles.append(os.path.join(settings.STATIC_ROOT, path.replace('/static/', '')))
-            
-            # 3. Carpeta por defecto del proyecto
             rutas_posibles.append(os.path.join(settings.BASE_DIR, path.lstrip('/')))
 
-            # Probamos todas las rutas hasta encontrar el archivo
             for static_file_path in rutas_posibles:
                 if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
                     try:
@@ -170,7 +145,6 @@ def start_server():
                         return [content]
                     except Exception as e:
                         print(f"Error leyendo estático {static_file_path}: {e}")
-                        
         return application(environ, start_response)
 
     print("Iniciando servidor local en http://127.0.0.1:8000...")
@@ -187,21 +161,114 @@ class Api:
             window.toggle_fullscreen()
             
     def close_app(self):
-        on_closed()
+        if window:
+            window.destroy()
 
     def open_downloads_folder(self):
-        """Abre la carpeta de Descargas del sistema operativo (Windows o Linux)."""
         try:
             downloads_path = os.path.expanduser("~/Downloads")
             if not os.path.exists(downloads_path):
                 downloads_path = os.path.expanduser("~/Descargas") 
-
-            if os.name == 'nt':  # Windows
+            if os.name == 'nt':
                 os.startfile(downloads_path)
-            else:  # Linux
+            else:
                 subprocess.Popen(["xdg-open", downloads_path])
         except Exception as e:
             print(f"Error al abrir carpeta de descargas: {e}")
+
+def on_closing():
+    """Se ejecuta cuando el usuario intenta cerrar la ventana."""
+    respuesta = messagebox.askyesno(
+        "Cerrar Aplicación",
+        "¿Querés subir un backup a Google Drive antes de cerrar?"
+    )
+    
+    if respuesta:
+        # --- VENTANA DE CARGA PERSONALIZADA CON ANIMACIÓN ---
+        carga_root = tk.Tk()
+        carga_root.title("Backup en proceso")
+        carga_root.configure(bg="#1E1E1E")
+        carga_root.geometry("350x180")
+        carga_root.resizable(False, False)
+        carga_root.eval('tk::PlaceWindow . center')
+
+        # Título
+        tk.Label(carga_root, text="Subiendo Backup...", font=("Helvetica", 12, "bold"), 
+                 fg="#FFC107", bg="#1E1E1E").pack(pady=(20, 5))
+        
+        # Contenedor para el spinner y el texto
+        frame_anim = tk.Frame(carga_root, bg="#1E1E1E")
+        frame_anim.pack(expand=True)
+
+        # Área de dibujo del spinner
+        canvas = tk.Canvas(frame_anim, width=40, height=40, bg="#1E1E1E", highlightthickness=0)
+        canvas.pack(side=tk.LEFT, padx=10)
+
+        # Texto explicativo
+        lbl_msg = tk.Label(frame_anim, text="Por favor, no cierres la ventana.\nEsto puede tardar unos segundos.", 
+                           font=("Helvetica", 9), fg="#EAEAEA", bg="#1E1E1E", justify="left")
+        lbl_msg.pack(side=tk.LEFT)
+
+        # Variables para la animación
+        angulo = 0
+        animando = True
+
+        def animar():
+            nonlocal angulo
+            if not animando: return
+            canvas.delete("all")
+            # Dibujamos un círculo de fondo
+            canvas.create_oval(5, 5, 35, 35, outline="#333333", width=4)
+            # Dibujamos el arco que gira (color amarillo)
+            canvas.create_arc(5, 5, 35, 35, start=angulo, extent=90, outline="#FFC107", width=4, style=tk.ARC)
+            angulo = (angulo - 10) % 360 # Restamos para que gire en sentido horario
+            carga_root.after(50, animar) # Repetir cada 50ms
+
+        animar() # Iniciar animación
+
+        resultado_backup = {"code": -1, "stderr": ""}
+
+        def ejecutar_backup():
+            # Ejecutamos el script en un hilo para que no congele la animación
+            try:
+                res = subprocess.run(
+                    [sys.executable, "backup_drive.py"], 
+                    capture_output=True, 
+                    text=True, 
+                    encoding='utf-8', 
+                    errors='replace'
+                )
+                resultado_backup["code"] = res.returncode
+                resultado_backup["stderr"] = res.stderr
+            except Exception as e:
+                resultado_backup["code"] = 1
+                resultado_backup["stderr"] = str(e)
+
+        # Iniciamos el backup en segundo plano
+        hilo_backup = threading.Thread(target=ejecutar_backup)
+        hilo_backup.start()
+
+        def verificar_fin():
+            if hilo_backup.is_alive():
+                carga_root.after(100, verificar_fin)
+            else:
+                nonlocal animando
+                animando = False
+                carga_root.destroy()
+                
+                if resultado_backup["code"] == 0:
+                    messagebox.showinfo("Backup Exitoso", "El backup se subió correctamente a Google Drive.")
+                else:
+                    error_msg = resultado_backup["stderr"][-500:] if resultado_backup["stderr"] else "Error desconocido"
+                    messagebox.showerror("Error de Backup", f"No se pudo subir el backup.\n\nDetalle:\n{error_msg}")
+
+        # Empezamos a revisar si terminó
+        verificar_fin()
+
+        # Iniciamos el bucle de la ventana
+        carga_root.mainloop()
+
+    return True
 
 def main():
     global window
@@ -231,10 +298,9 @@ def main():
     
     webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = False
 
-    # --- SELECCIÓN DE ICONO SEGÚN EL SISTEMA OPERATIVO ---
-    if os.name == 'nt':  # Windows requiere .ico
+    if os.name == 'nt':
         icon_path = os.path.join(BASE_DIR, 'facturacion', 'static', 'facturacion', 'img', 'logo.ico')
-    else:  # Linux acepta .png
+    else:
         icon_path = os.path.join(BASE_DIR, 'facturacion', 'static', 'facturacion', 'img', 'logo.png')
 
     window = webview.create_window(
@@ -242,10 +308,11 @@ def main():
         url=server_url,
         fullscreen=True,
         text_select=True, 
-        confirm_close=False,   
+        confirm_close=True,
         js_api=Api()
     )
     
+    window.events.closing += on_closing
     window.events.closed += on_closed
 
     try:
